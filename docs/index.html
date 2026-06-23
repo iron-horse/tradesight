@@ -54,7 +54,7 @@
       <div class="col-6 col-md-3">
         <div class="stat-box">
           <div class="stat-num">89.4%</div>
-          <div class="stat-label">P&L in backtesting (RSI Mean Reversion)</div>
+          <div class="stat-label">Historical backtest snapshot, not a forecast</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
@@ -80,13 +80,13 @@
 </section>
 
 
-<!-- Live Paper Trading Section -->
+<!-- Paper Trading Proof Section -->
 <section style="background:#0d2218; border-top: 1px solid #238636; border-bottom: 1px solid #238636;">
   <div class="container">
     <div class="text-center mb-4">
-      <h2 class="section-title" style="color:#3fb950;">📡 Live Paper Trading — Active</h2>
-      <p style="color:#8b949e;">Real autonomous runs via Alpaca paper API. Strategies trade real market data with fake money.</p>
-      <span style="background:#0d1117; border:1px solid #238636; color:#3fb950; padding:4px 14px; border-radius:20px; font-size:0.85rem;">Running since Mar 2026 · 2 active positions · 3 strategies competing</span>
+      <h2 class="section-title" style="color:#3fb950;">📡 Paper Trading Proof</h2>
+      <p style="color:#8b949e;">Alpaca paper-trading and backtesting workflows for local strategy research with simulated funds.</p>
+      <span style="background:#0d1117; border:1px solid #238636; color:#3fb950; padding:4px 14px; border-radius:20px; font-size:0.85rem;">Public proof snapshot: <a href="https://rentry.co/tradesight-public-credibility-proof-20260620" style="color:#58a6ff;">June 20, 2026</a></span>
     </div>
     <div class="row g-4 text-center">
       <div class="col-6 col-md-3">
@@ -130,15 +130,15 @@
         <div class="feature-card" style="border-color:#21262d;">
           <h6 style="color:#58a6ff;">Active Strategies</h6>
           <table style="width:100%; font-size:0.9rem; color:#8b949e;">
-            <tr><td>RSI Mean Reversion</td><td style="color:#3fb950;">Tournament Winner</td><td>live: 5 trades</td></tr>
-            <tr><td>MACD Crossover</td><td style="color:#58a6ff;">Challenger</td><td>live P&L +$17.89</td></tr>
-            <tr><td>VWAP Reversion</td><td style="color:#f0883e;">Active</td><td>live: 1 trade</td></tr>
+            <tr><td>RSI Mean Reversion</td><td style="color:#3fb950;">Tournament Candidate</td><td>paper-trade log captured</td></tr>
+            <tr><td>MACD Crossover</td><td style="color:#58a6ff;">Challenger</td><td>paper-trade log captured</td></tr>
+            <tr><td>VWAP Reversion</td><td style="color:#f0883e;">Candidate</td><td>paper-trade log captured</td></tr>
           </table>
           <p style="color:#6e7681; font-size:0.8rem; margin-top:8px;">Strategies compete nightly. Losers get killed, winners evolve parameters. Currently in Phase 1 calibration.</p>
         </div>
       </div>
     </div>
-    <p class="text-center mt-3" style="color:#8b949e; font-size:0.8rem;">Paper trading only — no real money at risk. Full P&L transparency available in the dashboard.</p>
+    <p class="text-center mt-3" style="color:#8b949e; font-size:0.8rem;">Paper trading only. Historical logs and backtests are not predictions, guarantees, or financial advice.</p>
   </div>
 </section>
 <!-- Features -->
@@ -164,14 +164,14 @@
         <div class="feature-card">
           <div class="feature-icon">💸</div>
           <h5>Paper Trading Engine</h5>
-          <p style="color:#8b949e;">Top strategies execute with fake money via Alpaca's API. Real P&L, zero risk. Flip to live when you're ready and confident.</p>
+          <p style="color:#8b949e;">Top strategies can execute with simulated funds via Alpaca's paper API. Use results for research only; live trading is not enabled or promised.</p>
         </div>
       </div>
       <div class="col-md-4">
         <div class="feature-card">
           <div class="feature-icon">🖥️</div>
           <h5>Local Dashboard</h5>
-          <p style="color:#8b949e;">Everything at localhost:5001 — Markets, Tournaments, Trading, Settings. No SaaS login. No cloud. Your machine, your data.</p>
+          <p style="color:#8b949e;">Everything at localhost:5000 — Markets, Tournaments, Trading, Settings. No SaaS login. No cloud. Your machine, your data.</p>
         </div>
       </div>
       <div class="col-md-4">
@@ -215,7 +215,7 @@
         <h2 class="section-title">Tech Stack</h2>
         <ul class="list-unstyled" style="color:#8b949e; line-height:2;">
           <li>🐍 <strong style="color:#e6edf3;">Python 3.11+</strong> — clean, readable, hackable</li>
-          <li>🌐 <strong style="color:#e6edf3;">Flask dashboard</strong> — localhost:5001, zero external dependencies</li>
+          <li>🌐 <strong style="color:#e6edf3;">Flask dashboard</strong> — localhost:5000, zero external dependencies</li>
           <li>📊 <strong style="color:#e6edf3;">Data:</strong> Polymarket API + Alpaca (both free)</li>
           <li>🗄️ <strong style="color:#e6edf3;">SQLite</strong> — no Postgres, no Redis, no Docker</li>
           <li>💻 <strong style="color:#e6edf3;">Runs on:</strong> Mac, Linux (tested on M4 Mac Mini)</li>
@@ -270,7 +270,8 @@
 
 <footer>
   <div class="container text-center">
-    <p>TradeSight is a tool for educational and paper trading purposes. Past backtesting results don't guarantee future performance. Not financial advice.</p>
+    <p>TradeSight is a tool for educational and paper trading purposes. Past backtesting and paper-trading results do not guarantee future performance. Not financial advice.</p>
+    <p class="mt-2"><a href="https://rentry.co/tradesight-public-credibility-proof-20260620" style="color:#58a6ff;">Public proof snapshot</a></p>
     <p class="mt-2"><a href="https://qcautonomous.gumroad.com" style="color:#58a6ff;">More tools at qcautonomous.gumroad.com</a></p>
     <p class="mt-2"><a href="strategies/" style="color:#8b949e;">Strategy Guides</a> &middot; <a href="blog/index.html" style="color:#8b949e;">Blog</a></p>
   </div>

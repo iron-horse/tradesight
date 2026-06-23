@@ -6,16 +6,19 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-2.3+-green.svg)](https://flask.palletsprojects.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests: 169/169](https://img.shields.io/badge/tests-169%2F169%20passing-brightgreen.svg)]()
+[![Tests: 282/282](https://img.shields.io/badge/tests-282%2F282%20passing-brightgreen.svg)]()
 [![Paper Trading](https://img.shields.io/badge/mode-paper%20trading-orange.svg)]()
-[![Live P&L](https://img.shields.io/badge/live%20P%26L-%2B6.43%25%20%28%2B%2432.15%29-brightgreen.svg)]()
-[![Portfolio](https://img.shields.io/badge/portfolio-%24532-blue.svg)]()
+[![Public Proof](https://img.shields.io/badge/public%20proof-2026--06--20-blue.svg)](https://rentry.co/tradesight-public-credibility-proof-20260620)
 [![GitHub Stars](https://img.shields.io/github/stars/rmbell09-lang/tradesight?style=social)](https://github.com/rmbell09-lang/tradesight)
 [![Strategies](https://img.shields.io/badge/strategies-9-brightgreen.svg)](https://github.com/rmbell09-lang/tradesight#strategies)
 
 **Build, test, and evolve trading strategies with AI — entirely on your own machine. No cloud subscription. No data leaks. No monthly fees.**
 
 TradeSight is a self-hosted Python app that runs AI-powered strategy tournaments overnight, backtests technical indicators, and executes paper trades via Alpaca — all from a local web dashboard.
+
+Public proof snapshot: https://rentry.co/tradesight-public-credibility-proof-20260620
+
+TradeSight is for research, backtesting, and paper trading. It is not financial advice, and it does not guarantee income, returns, accuracy, or live-trading performance.
 
 <p align="center">
   <img src="docs/demo.svg" alt="TradeSight Demo — Paper Trading Report" width="800">
@@ -37,8 +40,9 @@ TradeSight is a self-hosted Python app that runs AI-powered strategy tournaments
 | Feature | Description |
 |---|---|
 | 🧬 **AI Strategy Tournaments** | Automated overnight evolution of trading strategies — the best wins, rest are retired |
+| 🛡️ **Safer Optimizer Promotion Gates** | Family-aware RSI/MACD/Momentum tuning with OOS, walk-forward, regime, Monte Carlo, and overfit checks before any parameter promotion |
 | 📊 **15+ Technical Indicators** | MACD, RSI, Bollinger Bands, EMA crossovers, ATR, volume analysis, and more |
-| 💸 **Paper Trading** | Connect Alpaca paper account — trade with fake money, track real P&L |
+| 💸 **Paper Trading** | Connect an Alpaca paper account — trade with simulated funds and track paper-only P&L |
 | 🔍 **Multi-Market Scanner** | Scan stocks + Polymarket prediction markets for signals simultaneously |
 | 🌐 **Web Dashboard** | Real-time Flask interface — positions, signals, tournament results, logs |
 | ⏰ **Cron Automation** | Overnight strategy improvement runs automatically — wake up to new results |
@@ -65,13 +69,15 @@ brew install tradesight
 ```bash
 git clone https://github.com/rmbell09-lang/tradesight.git
 cd tradesight
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ### Run
 
 ```bash
-python START_TRADESIGHT.py
+python3 START_TRADESIGHT.py
 ```
 
 Dashboard opens at **http://localhost:5000**
@@ -79,15 +85,13 @@ Dashboard opens at **http://localhost:5000**
 ### Demo Mode (No API Keys Required)
 TradeSight runs fully in demo mode with simulated market data — no Alpaca account needed to explore.
 
-### Live Paper Trading (Optional)
+### Alpaca Paper Trading (Optional)
 1. Create a free [Alpaca paper account](https://alpaca.markets/)
-2. Add your API keys to `config/api_keys.json`:
-```json
-{
-  "alpaca_key": "YOUR_KEY",
-  "alpaca_secret": "YOUR_SECRET",
-  "paper": true
-}
+2. Export your paper-trading API keys before launching:
+```bash
+export ALPACA_API_KEY="YOUR_KEY"
+export ALPACA_SECRET_KEY="YOUR_SECRET"
+python3 START_TRADESIGHT.py
 ```
 
 ---
@@ -112,7 +116,7 @@ TradeSight runs fully in demo mode with simulated market data — no Alpaca acco
 ## 🧪 Test Results
 
 ```
-169/169 tests passing ✅
+282/282 tests passing ✅
 ```
 
 ```bash
@@ -139,28 +143,18 @@ tradesight/
 
 ---
 
-## 📈 Live Paper Trading — April 2026
+## 📈 Public Proof & Paper-Trading Notes
 
-Real money-at-risk (on paper). Updated automatically. System has been live since March 2026.
+TradeSight includes an Alpaca paper-trading workflow for testing strategy automation with simulated funds. It is designed for local research, backtesting, and paper-trading experiments before any real-money decision.
 
-**Current Portfolio:** $532 total value | **+6.43% total return** (+$32.15)
+Current public proof snapshot: https://rentry.co/tradesight-public-credibility-proof-20260620
 
-| Strategy | Trades | P&L | Win Rate |
-|---|---|---|---|
-| MACD Crossover | 1 | +$17.89 | 100% ✅ |
-| VWAP Reversion | 1 | -$4.75 | 0% |
-| RSI Mean Reversion | 5 | -$13.77 | 20% |
+Important limits:
 
-**Recent Closed Trades (Last 7 Days):**
-| Symbol | Strategy | Entry | Exit | P&L |
-|---|---|---|---|---|
-| JPM | MACD Crossover | $242.94 | $303.24 | +$17.89 ✅ |
-| SPY | RSI Mean Reversion | $596.36 | $649.79 | +$6.06 ✅ |
-| AMZN | VWAP Reversion | $223.25 | $209.69 | -$4.75 |
-| QQQ | RSI Mean Reversion | $590.06 | $565.22 | -$6.56 |
-| GOOG | RSI Mean Reversion | $297.77 | $276.47 | -$13.28 |
-
-> This is a live paper trading account connected to Alpaca. All prices are real market data; no real money at risk. System runs overnight tournaments to evolve strategy parameters automatically. Early RSI underperformance drove a regime-filter upgrade now in production.
+- Paper-trading results are simulated and may not match live-market execution.
+- Backtests and historical paper-trading snapshots are not predictions.
+- TradeSight is not financial advice.
+- No income, return, win-rate, or live-trading performance is promised.
 
 ---
 
@@ -171,11 +165,12 @@ Real money-at-risk (on paper). Updated automatically. System has been live since
 - [x] Alpaca paper trading integration
 - [x] Real-time web dashboard
 - [x] Overnight automation (cron)
+- [x] Family-aware optimizer validation with OOS, walk-forward, regime, and overfit gates
 - [ ] Phase 1: Active stop-loss + take-profit execution
 - [ ] Phase 1: Trailing stop with high-water mark
 - [ ] Phase 2: Confluence strategy (multi-indicator entry gates)
-- [ ] Phase 2: Market regime detection (bull/bear/sideways filter)
-- [ ] Phase 3: Monte Carlo simulation for strategy validation
+- [x] Phase 2: Market regime detection (bull/bear/sideways filter)
+- [x] Phase 3: Monte Carlo simulation for strategy validation
 
 ---
 
