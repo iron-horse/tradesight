@@ -1,126 +1,79 @@
-"""macOS Keychain integration for TradeSight API keys."""
+"""macOS Keychain integration for TradeSight.
+
+IBKR TWS uses a local socket connection — no API keys are required.
+This module is kept for potential future secret storage (e.g. webhook tokens).
+The Alpaca-specific helpers have been removed.
+"""
 import subprocess
 import logging
 import os
 
 logger = logging.getLogger(__name__)
 
+
 class KeychainManager:
-    """Manages API keys in macOS Keychain with fallback to environment variables."""
-    
+    """Manages secrets in macOS Keychain with environment variable fallback."""
+
     def __init__(self, service_prefix="TradeSight"):
         self.service_prefix = service_prefix
-        
+
     def _run_security_command(self, args):
         """Run macOS security command with error handling."""
         try:
             result = subprocess.run(
                 ['security'] + args,
-                capture_output=True,
-                text=True,
-                check=True
+                capture_output=True, text=True, check=True
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
             logger.debug(f"Security command failed: {e}")
             return None
         except FileNotFoundError:
-            logger.warning("macOS security command not found - not running on macOS?")
+            logger.warning("macOS security command not found")
             return None
-    
-    def get_api_key(self, key_name, account="api-key", fallback_env=None):
-        """
-        Get API key from Keychain with environment variable fallback.
-        
-        Args:
-            key_name: Name of the service/API (e.g., "Alpaca-Key", "Alpaca-Secret")
-            account: Account name in keychain (default: "api-key")  
-            fallback_env: Environment variable name to check if keychain fails
-            
-        Returns:
-            str: API key or empty string if not found
-        """
-        service_name = f"{self.service_prefix}-{key_name}"
-        
-        # Try keychain first
-        api_key = self._run_security_command([
-            'find-generic-password',
-            '-s', service_name,
-            '-a', account,
-            '-w'  # output password only
-        ])
-        
-        if api_key:
-            logger.debug(f"Retrieved {key_name} API key from keychain")
-            return api_key
-            
-        # Fallback to environment variable
-        if fallback_env:
-            env_key = os.environ.get(fallback_env, "")
-            if env_key:
-                logger.info(f"Using {key_name} API key from environment variable {fallback_env}")
-                return env_key
-        
-        logger.warning(f"No {key_name} API key found in keychain or environment")
-        return ""
-    
-    def set_api_key(self, key_name, api_key, account="api-key"):
-        """
-        Store API key in Keychain.
-        
-        Args:
-            key_name: Name of the service/API (e.g., "Alpaca-Key", "Alpaca-Secret")
-            api_key: The API key to store
-            account: Account name in keychain (default: "api-key")
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        service_name = f"{self.service_prefix}-{key_name}"
-        
-        result = self._run_security_command([
-            'add-generic-password',
-            '-s', service_name,
-            '-a', account,
-            '-w', api_key,
-            '-U'  # update if exists
-        ])
-        
-        # security command returns empty string on success
-        if result is not None:
-            logger.info(f"Successfully stored {key_name} API key in keychain")
-            return True
-        else:
-            logger.error(f"Failed to store {key_name} API key in keychain")
-            return False
 
-# Global instance for easy import
+    def get_secret(self, key_name, account="api-key", fallback_env=None):
+        """Get a secret from Keychain with environment variable fallback."""
+        service_name = f"{self.service_prefix}-{key_name}"
+        secret = self._run_security_command([
+            'find-generic-password', '-s', service_name, '-a', account, '-w'
+        ])
+        if secret:
+            return secret
+        if fallback_env:
+            env_val = os.environ.get(fallback_env, "")
+            if env_val:
+                return env_val
+        return ""
+
+    def set_secret(self, key_name, value, account="api-key"):
+        """Store a secret in Keychain."""
+        service_name = f"{self.service_prefix}-{key_name}"
+        result = self._run_security_command([
+            'add-generic-password', '-s', service_name,
+            '-a', account, '-w', value, '-U'
+        ])
+        return result is not None
+
+
+# Global instance
 keychain = KeychainManager()
 
-# Convenience functions for trading API keys
-def get_alpaca_api_key():
-    """Get Alpaca API key from keychain with ALPACA_API_KEY fallback."""
-    # Try both account names (stored as 'luckyai', default was 'api-key')
-    key = keychain.get_api_key('Alpaca-Key', account='luckyai', fallback_env='ALPACA_API_KEY')
-    if not key:
-        key = keychain.get_api_key('Alpaca-Key', fallback_env='ALPACA_API_KEY')
-    return key
 
-def get_alpaca_secret_key():
-    """Get Alpaca secret key from keychain with ALPACA_SECRET_KEY fallback."""
-    key = keychain.get_api_key('Alpaca-Secret', account='luckyai', fallback_env='ALPACA_SECRET_KEY')
-    if not key:
-        key = keychain.get_api_key('Alpaca-Secret', fallback_env='ALPACA_SECRET_KEY')
-    return key
+# ---------------------------------------------------------------------------
+# IBKR connection helpers
+# ---------------------------------------------------------------------------
 
-def get_polygon_api_key():
-    """Get Polygon API key from keychain with POLYGON_API_KEY fallback."""
-    return keychain.get_api_key("Polygon", fallback_env="POLYGON_API_KEY")
+def get_ibkr_host() -> str:
+    """Get IBKR TWS host (default: 127.0.0.1)."""
+    return os.environ.get("IBKR_HOST", "127.0.0.1")
 
-def get_yahoo_api_key():
-    """Get Yahoo Finance API key from keychain with YAHOO_API_KEY fallback."""
-    return keychain.get_api_key("Yahoo", fallback_env="YAHOO_API_KEY")
 
-def get_openai_api_key():
-    """Get OpenAI API key from keychain with OPENAI_API_KEY fallback."""
-    return keychain.get_api_key("OpenAI", fallback_env="OPENAI_API_KEY")
+def get_ibkr_port() -> int:
+    """Get IBKR TWS port (7497=TWS paper, 4002=IB Gateway paper)."""
+    return int(os.environ.get("IBKR_PORT", "7497"))
+
+
+def get_ibkr_client_id() -> int:
+    """Get IBKR client ID for this connection (default: 1)."""
+    return int(os.environ.get("IBKR_CLIENT_ID", "1"))

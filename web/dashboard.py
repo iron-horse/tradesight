@@ -613,34 +613,24 @@ def alerts_test():
 
 @app.route('/api/emergency/close-all-positions', methods=['POST'])
 def emergency_close_all_positions():
-    """Close all open Alpaca positions and sync local DB. Emergency use only."""
+    """Close all open IBKR positions and sync local DB. Emergency use only."""
     try:
         import sys
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/src')
-        from data.alpaca_client import AlpacaClient
+        from data.ibkr_client import IBKRClient
         from trading.position_manager import PositionManager
         from datetime import datetime
         import sqlite3
 
-        api_key = os.environ.get("ALPACA_API_KEY", "")
-        secret_key = os.environ.get("ALPACA_SECRET_KEY", "") or os.environ.get("ALPACA_SECRET", "")
-        if not api_key or not secret_key:
-            return jsonify({"error": "Alpaca keys not in env"}), 500
-        client = AlpacaClient(api_key=api_key, secret_key=secret_key, paper=True)
+        client = IBKRClient()  # connects to local TWS via IBKR_HOST/IBKR_PORT
         if client.demo_mode:
-            return jsonify({'error': 'Alpaca not authenticated (demo mode)'}), 500
+            return jsonify({'error': 'IBKR not connected (TWS not running or not logged in)'}), 500
 
-        # Get all open Alpaca positions
-        import requests
-        r = requests.get(f"{client.base_url}/v2/positions", headers=client.headers, timeout=10)
-        if r.status_code != 200:
-            return jsonify({'error': f'Failed to fetch Alpaca positions: {r.text}'}), 500
-
-        alpaca_positions = r.json()
+        ibkr_positions = client.get_remote_positions()
         closed = []
         errors = []
 
-        for pos in alpaca_positions:
+        for pos in ibkr_positions:
             symbol = pos.get('symbol')
             qty = float(pos.get('qty', 0))
             avg_price = float(pos.get('avg_entry_price', 0))

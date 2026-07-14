@@ -21,7 +21,7 @@ import threading
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from data.alpaca_client import AlpacaClient
+from data.ibkr_client import IBKRClient as AlpacaClient  # IBKR drop-in replacement
 from trading.position_manager import PositionManager, PortfolioState
 from automation.strategy_automation import StrategyAutomation
 from strategy_lab.tournament import get_builtin_strategies
@@ -162,11 +162,10 @@ class PaperTrader:
         else:
             self.alert_manager = None
 
-        # Initialize Alpaca client (demo mode if no API keys)
-        if alpaca_api_key and alpaca_secret:
-            self.alpaca = AlpacaClient(api_key=alpaca_api_key, secret_key=alpaca_secret, paper=True)
-        else:
-            self.alpaca = AlpacaClient()  # Demo mode
+        # Initialize IBKR client (demo mode if TWS is not running)
+        import math as _math
+        from config import IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
+        self.alpaca = AlpacaClient(host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID)
         
         # Load per-symbol OOS performance (from optimizer)
         self._symbol_performance = {}
@@ -942,10 +941,10 @@ class PaperTrader:
                           quantity: float, price: float, entry_reason: str = '') -> bool:
         """Execute a buy order with trade journal entry"""
         try:
-            # Place order with Alpaca (or simulate in demo mode)
+            # Place order with IBKR TWS (integer shares only — floor applied inside IBKRClient)
             order_result = self.alpaca.place_paper_trade(
                 symbol=symbol,
-                quantity=round(quantity, 6),  # fractional shares supported
+                quantity=round(quantity, 6),  # IBKRClient will floor to int internally
                 side='buy'
             )
             
@@ -1041,7 +1040,7 @@ class PaperTrader:
                 self.logger.debug(f"No open position to close for {symbol} {strategy}")
                 return False
 
-            # Use DELETE /v2/positions/{symbol} — closes full Alpaca position, handles fractional shares
+        # Use close_full_position — closes full IBKR position, handles integer shares
             order_result = self.alpaca.close_full_position(symbol)
 
             if order_result and "error" not in order_result:
@@ -1793,8 +1792,8 @@ class PaperTrader:
             return "Failed to generate trading report"
     
 
-    def _sync_with_alpaca(self):
-        """Sync local state with Alpaca reality - call at start of every session."""
+    def _sync_with_broker(self):
+        """Sync local state with IBKR TWS reality - call at start of every session."""
         try:
             account = self.alpaca.get_account()
             if not account:
@@ -1805,7 +1804,7 @@ class PaperTrader:
             real_cash = float(account.get("buying_power", 0))
             real_positions_value = float(account.get("long_market_value", 0))
             
-            self.logger.info("Alpaca account: equity=$%.2f, buying_power=$%.2f, positions=$%.2f" % (real_equity, real_cash, real_positions_value))
+            self.logger.info("IBKR account: equity=$%.2f, buying_power=$%.2f, positions=$%.2f" % (real_equity, real_cash, real_positions_value))
             
             # Check for orphan positions (in Alpaca but not in our DB)
             remote_positions = self.alpaca.get_remote_positions()
@@ -1857,7 +1856,7 @@ class PaperTrader:
                     self.logger.info("Alpaca has existing position: %s (qty=%s)" % (sym, rp.get("qty", "?")))
             
         except Exception as e:
-            self.logger.error("Alpaca sync failed: %s" % str(e))
+            self.logger.error("IBKR sync failed: %s" % str(e))
             self._alpaca_synced = False
 
     def _sync_orphan_positions(self, remote_positions):
@@ -1952,69 +1951,13 @@ class PaperTrader:
         except Exception as e:
             self.logger.error("[StaleSync] Failed: %s" % str(e))
 
-    def _trade_updates_connect_once(self, stop_event: threading.Event):
-        """Connect to Alpaca trade_updates stream and block until disconnected.
-
-        Raises on auth/subscribe failure or connection drop so supervisor can reconnect.
-        """
-        if self.alpaca.demo_mode:
-            raise RuntimeError('demo mode: websocket disabled')
-
-        # Lazy import so unit tests don't require websocket-client installed.
-        import websocket
-
-        ws_url = 'wss://paper-api.alpaca.markets/stream'
-        ws = websocket.create_connection(ws_url, timeout=20)
-        ws.settimeout(20)
-        try:
-            ws.send(json.dumps({
-                'action': 'auth',
-                'key': self.alpaca.api_key,
-                'secret': self.alpaca.secret_key,
-            }))
-            auth_resp = json.loads(ws.recv())
-            auth_payload = auth_resp[0] if isinstance(auth_resp, list) and auth_resp else auth_resp
-            auth_stream = auth_payload.get('stream') if isinstance(auth_payload, dict) else None
-            auth_data = auth_payload.get('data', {}) if isinstance(auth_payload, dict) else {}
-            auth_status = str(auth_data.get('status', '')).lower() if isinstance(auth_data, dict) else ''
-            if auth_stream != 'authorization' or auth_status != 'authorized':
-                raise RuntimeError(f'websocket auth failed: {auth_resp}')
-
-            ws.send(json.dumps({'action': 'listen', 'data': {'streams': ['trade_updates']}}))
-            listen_resp = json.loads(ws.recv())
-            payload = listen_resp[0] if isinstance(listen_resp, list) and listen_resp else listen_resp
-            streams = payload.get('data', {}).get('streams', []) if isinstance(payload, dict) else []
-            if 'trade_updates' not in streams:
-                raise RuntimeError(f'trade_updates subscribe failed: {listen_resp}')
-
-            self.logger.info('[WS] Connected to Alpaca trade_updates stream')
-
-            while not stop_event.is_set():
-                raw = ws.recv()
-                if raw is None:
-                    raise ConnectionError('empty websocket frame')
-                event_msg = json.loads(raw)
-                packets = event_msg if isinstance(event_msg, list) else [event_msg]
-                for packet in packets:
-                    if packet.get('stream') != 'trade_updates':
-                        continue
-                    data = packet.get('data', {})
-                    event = data.get('event')
-                    if event in ('fill', 'partial_fill'):
-                        order = data.get('order', {})
-                        self.logger.info(
-                            '[WS] %s %s qty=%s avg=%s side=%s',
-                            event,
-                            order.get('symbol', '?'),
-                            order.get('filled_qty', '?'),
-                            order.get('filled_avg_price', '?'),
-                            order.get('side', '?'),
-                        )
-        finally:
-            try:
-                ws.close()
-            except Exception as stop_err:
-                self.logger.warning(f"Failed to stop trade update monitor cleanly: {stop_err}")
+    def _trade_updates_connect_once(self, stop_event):
+        """No-op: IBKR order fill updates are handled by ib_async internally."""
+        # With ib_async, trade updates come through the IB object's event system.
+        # The explicit Alpaca WebSocket stream is no longer needed.
+        import time as _time
+        while not stop_event.is_set():
+            _time.sleep(5)  # idle loop — supervisor just needs to block
 
     def _start_trade_updates_monitor(self):
         """Start background websocket supervisor with exponential backoff."""
@@ -2056,8 +1999,8 @@ class PaperTrader:
             self.logger.info("=== Starting TradeSight Paper Trading Session ===")
             self._start_trade_updates_monitor()
             
-            # Sync with Alpaca before doing anything
-            self._sync_with_alpaca()
+            # Sync with IBKR TWS before doing anything
+            self._sync_with_broker()
             
             # Main trading logic
             self.scan_and_trade()

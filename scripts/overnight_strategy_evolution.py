@@ -35,7 +35,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from strategy_lab.backtest import BacktestEngine, rsi_mean_reversion, simple_ma_crossover
 from strategy_lab.tournament import get_builtin_strategies
 from strategy_lab.ai_engine import create_test_data
-from data.alpaca_client import AlpacaClient
+from data.ibkr_client import IBKRClient as AlpacaClient  # IBKR drop-in
 
 # Feedback tracker for adaptive parameter weighting
 try:
@@ -56,12 +56,7 @@ log_dir.mkdir(exist_ok=True)
 
 log_file = log_dir / f"overnight_evolution_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
-# Guard: must have real Alpaca keys (not running via SSH without Keychain context)
-_alpaca_key = os.environ.get('ALPACA_API_KEY', '')
-if not _alpaca_key:
-    print('ERROR: ALPACA_API_KEY not set. Run via launchd (com.luckyai.tradesight-optimizer) for Keychain access.')
-    print('Exiting to prevent synthetic data run.')
-    sys.exit(1)
+# IBKR: no API keys needed — connection validated at first request to TWS
 
 
 logging.basicConfig(
@@ -537,25 +532,23 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
         'KO', 'DIS',                         # Consumer staples + media
     ]
 
-    # PRIMARY: Alpaca 1H when credentials are present.
-    # Strategy is designed for 1H bars and launchd injects Alpaca keys via app-launcher.sh.
-    if alpaca_key and alpaca_secret:
-        logger.info("Fetching 1H bars from Alpaca (primary)...")
-        try:
-            client = AlpacaClient(api_key=alpaca_key, secret_key=alpaca_secret, paper=True)
-            for sym in symbols:
-                try:
-                    df = client.get_historical_data(sym, days=730, timeframe='1Hour')
-                    if df is not None and len(df) >= 50:
-                        training_datasets[sym] = df
-                        logger.info(f"  Alpaca {sym}: {len(df)} 1H bars")
-                except Exception as e:
-                    logger.warning(f"  Alpaca {sym} failed: {e}")
-            if training_datasets:
-                data_source = 'alpaca_1h'
-                logger.info(f"Using Alpaca 1H data ({len(training_datasets)} symbols, strategy designed for 1H)")
-        except Exception as e:
-            logger.warning(f"Alpaca connection failed: {e}")
+    # PRIMARY: IBKR TWS when running (real-time SIP data, no pacing issues for backtests).
+    try:
+        logger.info("Fetching 1H bars from IBKR TWS (primary)...")
+        client = AlpacaClient(client_id=10)  # connects via IBKR_HOST/IBKR_PORT, client_id=10 to avoid dashboard conflict
+        for sym in symbols:
+            try:
+                df = client.get_historical_data(sym, days=730, timeframe='1Hour')
+                if df is not None and len(df) >= 50 and df.attrs.get('data_source') == 'ibkr':
+                    training_datasets[sym] = df
+                    logger.info(f"  IBKR {sym}: {len(df)} 1H bars")
+            except Exception as e:
+                logger.warning(f"  IBKR {sym} failed: {e}")
+        if training_datasets:
+            data_source = 'ibkr_1h'
+            logger.info(f"Using IBKR 1H data ({len(training_datasets)} symbols)")
+    except Exception as e:
+        logger.warning(f"IBKR connection failed: {e}")
 
     # FALLBACK: yfinance 1H if Alpaca unavailable or failed
     if not training_datasets and _YFINANCE_AVAILABLE:
@@ -612,6 +605,8 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
     optimized_results = tuner.test_parameter_grid(winner['name'])
     
     if optimized_results:
+        cv_results = None
+        wf_results = None
         best = optimized_results[0]
         
         improvement_pnl    = best['pnl_pct'] - baseline_pnl

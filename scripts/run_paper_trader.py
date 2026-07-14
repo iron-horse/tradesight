@@ -46,23 +46,10 @@ def get_latest_optimization_params():
 
 
 def main():
-    api_key = os.environ.get('ALPACA_API_KEY', '')
-    secret_key = os.environ.get('ALPACA_SECRET_KEY', '') or os.environ.get('ALPACA_SECRET', '')
-
-    if not api_key or not secret_key:
-        logger.error('Alpaca API keys not set — cannot run paper trader')
-        sys.exit(1)
-
-    logger.info('=== TradeSight Paper Trader Starting ===')
-    logger.info(f'API key: {api_key[:8]}...')
-
+    # IBKR: no API keys needed — PaperTrader connects to local TWS automatically
+    logger.info('=== TradeSight Paper Trader Starting (IBKR TWS) ===')
     from trading.paper_trader import PaperTrader
-
-    trader = PaperTrader(
-        base_dir=str(BASE_DIR),
-        alpaca_api_key=api_key,
-        alpaca_secret=secret_key
-    )
+    trader = PaperTrader(base_dir=str(BASE_DIR))
 
     # Prefer champion params (stable, proven) over raw optimizer output
     try:

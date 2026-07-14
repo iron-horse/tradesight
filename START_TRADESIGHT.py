@@ -15,9 +15,10 @@ def main():
     print("=" * 50)
     print("🚀 Starting dashboard...")
     
-    # Change to TradeSight directory
-    os.chdir("/Volumes/Crucial X10/TradeSight")
-    sys.path.insert(0, "src")
+    # Change to TradeSight directory (resolve relative to this script)
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(project_dir)
+    sys.path.insert(0, os.path.join(project_dir, "src"))
     
     print("🌐 Dashboard will be at: http://localhost:5000")
     print("💡 Browser will open automatically")
@@ -41,7 +42,7 @@ def main():
         app.run(host="127.0.0.1", port=5000, debug=False)
     except Exception as e:
         print(f"❌ Error: {e}")
-        print("💡 Try running from terminal: cd /Volumes/Crucial X10/TradeSight && python3 web/dashboard.py")
+        print(f"💡 Try running from terminal: cd '{project_dir}' && python3 web/dashboard.py")
         input("\nPress Enter to close...")
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from strategy_lab.tournament import StrategyTournament, get_builtin_strategies
 from strategy_lab.backtest import make_rsi_strategy
 from strategy_lab.ai_engine import AIStrategyEngine, create_test_data
-from data.alpaca_client import AlpacaClient
+from data.ibkr_client import IBKRClient as AlpacaClient  # IBKR drop-in
 
 
 

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import json
 import logging
 
-from data.alpaca_client import AlpacaClient, StockQuote
+from data.ibkr_client import IBKRClient as AlpacaClient, StockQuote  # IBKR drop-in
 from scanners.stock_opportunities import StockOpportunityScorer, OpportunityScore
 
 logger = logging.getLogger(__name__)

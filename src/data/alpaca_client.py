@@ -1,8 +1,11 @@
 """
-TradeSight Alpaca Integration
+TradeSight Alpaca Integration — DEPRECATED
 
-Client for Alpaca Markets API - stock market data and paper trading.
-Provides real-time and historical OHLCV data for stocks.
+This module has been superseded by ibkr_client.py (IBKR TWS via ib_async).
+It is kept for backward compatibility only (test fixtures, legacy scripts).
+
+Do NOT use AlpacaClient in new code. Use IBKRClient instead:
+    from data.ibkr_client import IBKRClient
 """
 
 import os

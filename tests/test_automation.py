@@ -99,7 +99,7 @@ class TestStrategyAutomation:
     # Dataset creation tests
     # ------------------------------------------------------------------
 
-    @patch('automation.strategy_automation.AlpacaClient')
+    @patch('automation.strategy_automation.AlpacaClient')  # noqa: patched via alias IBKRClient
     def test_create_tournament_datasets_real_data(self, mock_alpaca_cls):
         """Dataset creation uses real data with walk-forward splits when Alpaca is available"""
         fake_df = _make_fake_ohlcv(300)
@@ -118,7 +118,7 @@ class TestStrategyAutomation:
             # Must NOT be labelled synthetic when real data is available
             assert 'SYNTHETIC' not in name
 
-    @patch('automation.strategy_automation.AlpacaClient')
+    @patch('automation.strategy_automation.AlpacaClient')  # noqa: patched via alias IBKRClient
     def test_create_tournament_datasets_synthetic_fallback(self, mock_alpaca_cls):
         """Dataset creation falls back to synthetic when Alpaca is unavailable"""
         mock_client = MagicMock()
@@ -134,7 +134,7 @@ class TestStrategyAutomation:
             # Should be labelled synthetic in fallback mode
             assert 'SYNTHETIC' in name
 
-    @patch('automation.strategy_automation.AlpacaClient')
+    @patch('automation.strategy_automation.AlpacaClient')  # noqa: patched via alias IBKRClient
     def test_create_tournament_datasets(self, mock_alpaca_cls):
         """Backwards-compat: datasets list has correct length and valid DataFrames"""
         mock_client = MagicMock()
@@ -283,7 +283,7 @@ class TestStrategyAutomation:
 
     @patch('automation.strategy_automation.StrategyTournament')
     @patch('automation.strategy_automation.get_builtin_strategies')
-    @patch('automation.strategy_automation.AlpacaClient')
+    @patch('automation.strategy_automation.AlpacaClient')  # noqa: patched via alias IBKRClient
     def test_run_tournament_session_success(self, mock_alpaca_cls, mock_strategies, mock_tournament):
         """Test successful tournament session run"""
         mock_strategies.return_value = {'Test Strategy': Mock()}

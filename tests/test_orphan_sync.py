@@ -35,7 +35,7 @@ def temp_dir():
 @pytest.fixture
 def mock_trader(temp_dir):
     """PaperTrader in demo mode with a fresh temp DB"""
-    with patch('data.alpaca_client.AlpacaClient') as MockAlpaca:
+    with patch('data.ibkr_client.IBKRClient') as MockAlpaca:
         mock_alpaca = MagicMock()
         mock_alpaca.demo_mode = True
         mock_alpaca.get_account.return_value = {
@@ -161,7 +161,7 @@ class TestCloseStalePositions:
 
 
 class TestSyncWithAlpacaIntegration:
-    """Integration: _sync_with_alpaca calls both sync methods correctly."""
+    """Integration: _sync_with_broker calls both sync methods correctly."""
 
     def test_sync_runs_orphan_import_with_existing_local_positions(self, mock_trader):
         """Full integration: local has ADBE, Alpaca has GOOG → GOOG gets imported."""
@@ -171,7 +171,7 @@ class TestSyncWithAlpacaIntegration:
             {"symbol": "GOOG", "qty": "0.623563", "avg_entry_price": "175.00",
              "current_price": "177.00", "market_value": "110.43", "side": "long"},
         ]
-        mock_trader._sync_with_alpaca()
+        mock_trader._sync_with_broker()
 
         open_syms = get_open_symbols(mock_trader)
         assert "GOOG" in open_syms
@@ -180,7 +180,7 @@ class TestSyncWithAlpacaIntegration:
         """Local has JPM open, Alpaca returns [] → JPM should be closed."""
         insert_local_position(mock_trader, "JPM")
         mock_trader.alpaca.get_remote_positions.return_value = []
-        mock_trader._sync_with_alpaca()
+        mock_trader._sync_with_broker()
 
         db_path = mock_trader.position_manager.data_dir / 'positions.db'
         with sqlite3.connect(db_path) as conn:

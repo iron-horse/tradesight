@@ -397,19 +397,20 @@ class TestStockOpportunityScorer:
 
 import sys
 sys.path.append('src')
-from data.alpaca_client import AlpacaClient, StockQuote, PaperPosition
+from data.ibkr_client import IBKRClient, StockQuote, PaperPosition
+from data.ibkr_client import IBKRClient as AlpacaClient  # for backward-compat assertions
 from scanners.stock_scanner import StockScanner, ScanResult
 
 
-class TestAlpacaClient:
-    
+class TestIBKRClient:
+
     def setup_method(self):
-        self.client = AlpacaClient()  # Demo mode
-    
+        self.client = IBKRClient()  # Demo mode (TWS not running in CI)
+
     def test_initialization(self):
-        assert self.client.demo_mode is True
-        assert self.client.paper is True
-        assert len(self.client.SP500_SYMBOLS) >= 50
+        client = IBKRClient(port=9999)  # Force unreachable to test demo fallback
+        assert client.demo_mode is True
+        assert len(client.SP500_SYMBOLS) >= 50
     
     def test_get_historical_data(self):
         data = self.client.get_historical_data('AAPL', days=50)
