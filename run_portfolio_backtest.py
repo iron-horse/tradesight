@@ -338,5 +338,39 @@ def run_portfolio_simulation():
     for t in closed_trades[-30:]:
         print(f"{t['symbol']:<6} | {t['entry_time'].strftime('%m-%d %H:%M'):<16} | {t['exit_time'].strftime('%m-%d %H:%M'):<16} | {t['entry_price']:<9.2f} | {t['exit_price']:<9.2f} | {t['pnl_pct']:<+8.2f} | {t['reason']:<15}")
 
+    # Export all trades to reports/ folder
+    os.makedirs("reports", exist_ok=True)
+    report_path = f"reports/portfolio_backtest_all_trades.json"
+    report_data = {
+        "timeframe": TIMEFRAME,
+        "days": DAYS,
+        "metrics": {
+            "initial_value": initial_balance,
+            "final_equity": final_equity,
+            "total_return_pct": total_pnl_pct,
+            "total_pnl": total_pnl,
+            "win_rate": win_rate,
+            "total_trades": len(closed_trades),
+            "winning_trades": len(winning_trades),
+            "max_drawdown_pct": max_dd
+        },
+        "trades": [
+            {
+                "symbol": t["symbol"],
+                "entry_time": t["entry_time"].strftime('%Y-%m-%d %H:%M'),
+                "exit_time": t["exit_time"].strftime('%Y-%m-%d %H:%M'),
+                "entry_price": round(float(t["entry_price"]), 2),
+                "exit_price": round(float(t["exit_price"]), 2),
+                "pnl_dollars": round(float(t["pnl"]), 2),
+                "pnl_pct": round(float(t["pnl_pct"]), 2),
+                "reason": t["reason"]
+            }
+            for t in closed_trades
+        ]
+    }
+    with open(report_path, "w") as rf:
+        json.dump(report_data, rf, indent=2)
+    print(f"\n💾 Full list of all {len(closed_trades)} trades saved to: {report_path}")
+
 if __name__ == "__main__":
     run_portfolio_simulation()
