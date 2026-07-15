@@ -54,5 +54,5 @@ data/*.log
 positions.db
 dashboard.log
 dashboard_new.log
-data/
-!data/.gitkeep
+/data/
+!/data/.gitkeep

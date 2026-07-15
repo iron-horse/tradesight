@@ -24,3 +24,4 @@ This document tracks planned structural upgrades for the TradeSight trading orch
 * **Partial Fills:** How does the script handle a bracket order where only a portion of the entry size gets filled?
 * **Exit Modification:** How do we dynamically adjust a broker-side stop loss when the strategy triggers a trailing stop or custom indicator exit mid-trade?
 * **Sector Groups Tuning:** Expanding the overnight tuner to optimize parameters by asset sector groups (Tech vs. Staples vs. Energy) continuously.
+* **Historical Data Caching:** Implement a local database or parquet/csv cache (e.g. under `data/cache/`) for TWS historical bars. The optimizer and portfolio simulator will load data from cache if it is less than 24 hours old, eliminating TWS pacing delays during repeated backtest runs.

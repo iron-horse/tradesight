@@ -65,22 +65,84 @@ def run_portfolio_simulation():
 
     print(f"Fetching {DAYS} days of {TIMEFRAME} bars for {len(all_symbols)} symbols from TWS...")
     datasets = {}
-    for sym in all_symbols:
-        df = client.get_historical_data(sym, days=DAYS, timeframe=TIMEFRAME)
-        if df is not None and len(df) >= 100:
-            # Calculate RSI(14)
-            delta = df['close'].diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-            rs = gain / loss
-            df['rsi'] = 100 - (100 / (1 + rs))
-            df['sma_50'] = df['close'].rolling(window=50).mean()
-            # Set index as datetime for alignment
-            df.index = pd.to_datetime(df.index)
-            datasets[sym] = df
-            print(f"  {sym}: {len(df)} bars loaded")
-        else:
-            print(f"  ⚠️ {sym}: failed to load data")
+    
+    # Calculate chunks for intraday data
+    if TIMEFRAME == "1Hour" and DAYS > 365:
+        # Fetching in yearly chunks to bypass TWS duration constraints
+        import datetime as dt
+        from datetime import timedelta
+        chunks = int(np.ceil(DAYS / 365))
+        
+        for sym in all_symbols:
+            dfs = []
+            failed = False
+            for i in range(chunks):
+                # Calculate end DateTime for this chunk (shift back by 1 year each loop)
+                # First chunk is current time, second is 1 year ago, etc.
+                end_dt = dt.datetime.now() - timedelta(days=365 * i)
+                end_str = end_dt.strftime('%Y%m%d 16:00:00 EST') if i > 0 else ""
+                
+                try:
+                    df = client.get_historical_data(sym, days=365, timeframe=TIMEFRAME, end_date=end_str)
+                    if df is not None and len(df) > 0 and df.attrs.get('data_source') == 'ibkr':
+                        dfs.append(df)
+                    else:
+                        failed = True
+                        break
+                except Exception as e:
+                    failed = True
+                    break
+                    
+            if not failed and dfs:
+                # Merge chunks and sort chronologically
+                full_df = pd.concat(dfs).drop_duplicates().sort_index()
+                # Limit to total requested days (rough count of bars)
+                max_bars = DAYS * 7  # 7 bars per day for 1 hour timeframe
+                full_df = full_df.tail(max_bars)
+                
+                # Indicators
+                delta = full_df['close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                rs = gain / loss
+                full_df['rsi'] = 100 - (100 / (1 + rs))
+                full_df['sma_50'] = full_df['close'].rolling(window=50).mean()
+                full_df.index = pd.to_datetime(full_df.index)
+                
+                datasets[sym] = full_df
+                print(f"  {sym}: {len(full_df)} 1H bars loaded (merged across {chunks} chunks)")
+            else:
+                # Fallback to demo or standard fetch if chunks fail
+                print(f"  ⚠️ {sym}: chunk-fetching failed, falling back to standard fetch")
+                df = client.get_historical_data(sym, days=DAYS, timeframe=TIMEFRAME)
+                if df is not None and len(df) >= 100:
+                    delta = df['close'].diff()
+                    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                    rs = gain / loss
+                    df['rsi'] = 100 - (100 / (1 + rs))
+                    df['sma_50'] = df['close'].rolling(window=50).mean()
+                    df.index = pd.to_datetime(df.index)
+                    datasets[sym] = df
+                    print(f"  {sym}: {len(df)} bars loaded")
+                else:
+                    print(f"  ⚠️ {sym}: failed to load data")
+    else:
+        # Standard single fetch for daily or short intraday
+        for sym in all_symbols:
+            df = client.get_historical_data(sym, days=DAYS, timeframe=TIMEFRAME)
+            if df is not None and len(df) >= 100:
+                delta = df['close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                rs = gain / loss
+                df['rsi'] = 100 - (100 / (1 + rs))
+                df['sma_50'] = df['close'].rolling(window=50).mean()
+                df.index = pd.to_datetime(df.index)
+                datasets[sym] = df
+                print(f"  {sym}: {len(df)} bars loaded")
+            else:
+                print(f"  ⚠️ {sym}: failed to load data")
 
     if not datasets:
         print("Error: No data loaded.")
