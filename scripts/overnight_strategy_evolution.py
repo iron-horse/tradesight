@@ -649,6 +649,60 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
                         wf_results.get('profitable_windows', 0),
                         wf_results.get('total_windows', 0)))
         
+        # --- Group-Based Sector Optimization (Cluster Tuning) ---
+        logger.info("")
+        logger.info("=============================================================")
+        logger.info("📊 Starting Group-Based Sector Optimization (Cluster Tuning)")
+        logger.info("=============================================================")
+        try:
+            cluster_file = Path(__file__).resolve().parent.parent / 'data' / 'symbol_clusters.json'
+            if cluster_file.exists():
+                with open(cluster_file) as f:
+                    clusters = json.load(f)
+                
+                cluster_updated = False
+                for cluster_name, cluster_data in clusters.items():
+                    cluster_symbols = cluster_data.get('symbols', [])
+                    cluster_symbols_avail = [s for s in cluster_symbols if s in training_datasets]
+                    
+                    if not cluster_symbols_avail:
+                        logger.warning(f"  Cluster '{cluster_name}': no symbols available in fetched data — skipping")
+                        continue
+                    
+                    # Pick primary symbol for this cluster
+                    cluster_primary = cluster_symbols_avail[0]
+                    cluster_full_data = training_datasets[cluster_primary]
+                    cluster_train_split = int(len(cluster_full_data) * 0.70)
+                    cluster_train_data = cluster_full_data.iloc[:cluster_train_split].copy()
+                    
+                    logger.info(f"  Optimizing cluster '{cluster_name}' on primary symbol {cluster_primary} ({len(cluster_train_data)} training bars)...")
+                    cluster_tuner = ParameterTuner(cluster_train_data)
+                    cluster_opt_results = cluster_tuner.test_parameter_grid(winner['name'])
+                    
+                    if cluster_opt_results:
+                        cluster_best = cluster_opt_results[0]
+                        cluster_data['default_params'] = {
+                            'oversold':         int(cluster_best['oversold']),
+                            'overbought':       int(cluster_best['overbought']),
+                            'position_size':    float(cluster_best['position_size']),
+                            'stop_loss_pct':    float(cluster_best['stop_loss_pct']),
+                            'take_profit_pct':  float(cluster_best['take_profit_pct']),
+                            'max_holding_bars': int(cluster_best['max_holding_bars']),
+                        }
+                        cluster_updated = True
+                        logger.info(f"  ✅ Cluster '{cluster_name}' optimized: OS={cluster_best['oversold']} OB={cluster_best['overbought']} SL={cluster_best['stop_loss_pct']*100:.0f}% TP={cluster_best['take_profit_pct']*100:.0f}% Size={cluster_best['position_size']:.2f}")
+                    else:
+                        logger.warning(f"  No valid parameter variants found for cluster '{cluster_name}'")
+                
+                if cluster_updated:
+                    with open(cluster_file, 'w') as f:
+                        json.dump(clusters, f, indent=2)
+                    logger.info(f"💾 Saved updated group-based parameters to symbol_clusters.json")
+            else:
+                logger.warning("symbol_clusters.json not found in data/ directory")
+        except Exception as _cle:
+            logger.error(f"Group-based sector optimization failed: {_cle}", exc_info=True)
+
         return {
             'winner': 'RSI Mean Reversion',  # strategy actually being optimized
             'tournament_winner': winner['name'],  # what won the nightly tournament

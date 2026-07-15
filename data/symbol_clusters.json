@@ -1,0 +1,94 @@
+{
+  "tech": {
+    "symbols": [
+      "AAPL",
+      "MSFT",
+      "GOOGL",
+      "AMZN",
+      "META",
+      "QQQ"
+    ],
+    "default_params": {
+      "oversold": 30,
+      "overbought": 72,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.05,
+      "take_profit_pct": 0.08,
+      "max_holding_bars": 0
+    }
+  },
+  "financial": {
+    "symbols": [
+      "JPM",
+      "BAC",
+      "V",
+      "MA"
+    ],
+    "default_params": {
+      "oversold": 28,
+      "overbought": 72,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.03,
+      "take_profit_pct": 0.05,
+      "max_holding_bars": 0
+    }
+  },
+  "healthcare": {
+    "symbols": [
+      "JNJ",
+      "PFE"
+    ],
+    "default_params": {
+      "oversold": 33,
+      "overbought": 75,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.03,
+      "take_profit_pct": 0.05,
+      "max_holding_bars": 0
+    }
+  },
+  "energy": {
+    "symbols": [
+      "XOM",
+      "CVX"
+    ],
+    "default_params": {
+      "oversold": 33,
+      "overbought": 78,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.03,
+      "take_profit_pct": 0.05,
+      "max_holding_bars": 0
+    }
+  },
+  "consumer": {
+    "symbols": [
+      "WMT",
+      "COST",
+      "HD",
+      "KO",
+      "DIS"
+    ],
+    "default_params": {
+      "oversold": 30,
+      "overbought": 72,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.08,
+      "take_profit_pct": 0.12,
+      "max_holding_bars": 0
+    }
+  },
+  "index": {
+    "symbols": [
+      "SPY"
+    ],
+    "default_params": {
+      "oversold": 30,
+      "overbought": 68,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.03,
+      "take_profit_pct": 0.05,
+      "max_holding_bars": 0
+    }
+  }
+}
