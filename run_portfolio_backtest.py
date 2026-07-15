@@ -30,7 +30,7 @@ from data.ibkr_client import IBKRClient
 # To test the last 3 years: set TIMEFRAME = "1Day" and DAYS = 1095
 # To test the last 1 year (intraday): set TIMEFRAME = "1Hour" and DAYS = 365
 # ==============================================================================
-TIMEFRAME = "1Day"  # "1Hour" or "1Day"
+TIMEFRAME = "1Hour"  # "1Hour" or "1Day"
 DAYS = 1095         # Number of calendar days (365 = 1 year, 1095 = 3 years)
 # ==============================================================================
 
@@ -80,7 +80,7 @@ def run_portfolio_simulation():
                 # Calculate end DateTime for this chunk (shift back by 1 year each loop)
                 # First chunk is current time, second is 1 year ago, etc.
                 end_dt = dt.datetime.now() - timedelta(days=365 * i)
-                end_str = end_dt.strftime('%Y%m%d 16:00:00 EST') if i > 0 else ""
+                end_str = end_dt.strftime('%Y%m%d 16:00:00 US/Eastern') if i > 0 else ""
                 
                 try:
                     df = client.get_historical_data(sym, days=365, timeframe=TIMEFRAME, end_date=end_str)
