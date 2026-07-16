@@ -51,23 +51,30 @@ class StockScanner:
     - Multiple scan modes (quick, deep, custom)
     """
     
-    def __init__(self, 
+    def __init__(self,
                  alpaca_api_key: str = None,
                  alpaca_secret: str = None,
-                 paper_trading: bool = True):
+                 paper_trading: bool = True,
+                 ibkr_client=None):
         """
         Initialize stock scanner.
-        
+
         Args:
             alpaca_api_key: Alpaca API key (None = demo mode)
             alpaca_secret: Alpaca secret key
             paper_trading: Use paper trading endpoints
+            ibkr_client: Optional pre-built IBKRClient to reuse (avoids creating
+                         a new TWS connection and conflicting clientIds). If None,
+                         a new client is created using config defaults.
         """
-        self.alpaca = AlpacaClient(
-            host=IBKR_HOST,
-            port=IBKR_PORT,
-            client_id=IBKR_CLIENT_ID
-        )
+        if ibkr_client is not None:
+            self.alpaca = ibkr_client
+        else:
+            self.alpaca = AlpacaClient(
+                host=IBKR_HOST,
+                port=IBKR_PORT,
+                client_id=IBKR_CLIENT_ID
+            )
         self.scorer = StockOpportunityScorer()
         self.last_scan_result = None
         # Alert manager (optional)

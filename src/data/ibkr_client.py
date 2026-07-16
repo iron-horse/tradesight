@@ -194,7 +194,23 @@ class _IBKRSyncWrapper:
 
             return True
         except Exception as e:
-            logger.warning("[IBKRClient] Could not connect to TWS: %s", e)
+            err_type = type(e).__name__
+            if "Timeout" in err_type or "timeout" in str(e).lower():
+                logger.warning(
+                    "[IBKRClient] Connection to TWS timed out (clientId=%d). "
+                    "Most likely causes:\n"
+                    "  1. clientId=%d is already in use by another process "
+                    "(dashboard uses clientId=2, paper trader uses clientId=1 — "
+                    "never run two instances with the same clientId).\n"
+                    "  2. TWS API is not enabled: in TWS go to "
+                    "Edit → Global Configuration → API → Settings → "
+                    "check 'Enable ActiveX and Socket Clients', port=7497.\n"
+                    "  3. TWS is still starting up — wait 30s and retry.\n"
+                    "  Falling back to DEMO MODE.",
+                    self.client_id, self.client_id,
+                )
+            else:
+                logger.warning("[IBKRClient] Could not connect to TWS: %s", e)
             self._connected = False
             return False
 
@@ -269,7 +285,24 @@ class IBKRClient:
         self.client_id = client_id or int(os.environ.get("IBKR_CLIENT_ID", "1"))
 
         self._wrapper = _IBKRSyncWrapper(self.host, self.port, self.client_id)
-        self._connected = self._wrapper.connect()
+
+        # Check if demo mode is forced via config (skips TWS connection entirely)
+        _force_demo = False
+        try:
+            import src.config as _cfg
+            _force_demo = getattr(_cfg, "IBKR_DEMO_MODE", False)
+        except ImportError:
+            try:
+                import config as _cfg
+                _force_demo = getattr(_cfg, "IBKR_DEMO_MODE", False)
+            except ImportError:
+                pass
+
+        if _force_demo:
+            logger.info("[IBKRClient] IBKR_DEMO_MODE=True — skipping TWS connection, using Yahoo Finance / demo data.")
+            self._connected = False
+        else:
+            self._connected = self._wrapper.connect()
         self.demo_mode = not self._connected
 
         try:
@@ -384,7 +417,11 @@ class IBKRClient:
     # ------------------------------------------------------------------
 
     def get_quote(self, symbol: str) -> Optional[StockQuote]:
-        force_yahoo = True
+        try:
+            import src.config as tradesight_config
+            force_yahoo = getattr(tradesight_config, "FORCE_YAHOO_QUOTES", True)
+        except ImportError:
+            force_yahoo = True
 
         if force_yahoo:
             logger.info("[IBKRClient] get_quote(%s): FORCE_YAHOO_QUOTES is enabled — prioritizing Yahoo Finance query...", symbol)
@@ -669,11 +706,10 @@ class IBKRClient:
         if self.demo_mode or not self._ensure_connected():
             return []
         try:
-            async def _req_positions():
-                return await self._wrapper.ib.reqPositionsAsync()
-            positions = self._wrapper.run_async(_req_positions(), timeout=15)
+            # Use TWS portfolio() updates to query live market value, current price, and unrealized P&L
+            portfolio_items = self._wrapper.ib.portfolio()
             result = []
-            for p in (positions or []):
+            for p in (portfolio_items or []):
                 # Only process US equity (Stock) positions — skip Forex, Futures, Options etc.
                 contract_type = getattr(p.contract, 'secType', '') or type(p.contract).__name__
                 if contract_type not in ('STK', 'Stock', ''):
@@ -681,21 +717,22 @@ class IBKRClient:
                     continue
                 sym = p.contract.symbol
                 qty = float(p.position)
-                avg_cost = float(p.avgCost)
+                avg_cost = float(p.averageCost)
                 if qty == 0:
                     continue
-                try:
-                    quote = self.get_quote(sym)
-                    current_price = float(quote.last) if quote else avg_cost
-                except Exception:
-                    current_price = avg_cost
-                market_value = current_price * abs(qty)
+                
+                current_price = float(p.marketPrice) if p.marketPrice else avg_cost
+                market_value = float(p.marketValue) if p.marketValue else (current_price * abs(qty))
+                unrealized_pnl = float(p.unrealizedPNL) if p.unrealizedPNL and str(p.unrealizedPNL) != 'nan' else 0.0
                 side = "long" if qty > 0 else "short"
+                
                 result.append({
-                    "symbol": sym, "qty": str(qty),
+                    "symbol": sym, 
+                    "qty": str(qty),
                     "avg_entry_price": str(avg_cost),
                     "market_value": str(market_value),
                     "current_price": str(current_price),
+                    "unrealized_pnl": str(unrealized_pnl),
                     "side": side,
                 })
             return result
@@ -714,7 +751,7 @@ class IBKRClient:
                     side=pos.get("side", "long"),
                     avg_entry_price=float(pos["avg_entry_price"]),
                     current_price=float(pos["current_price"]),
-                    unrealized_pnl=(float(pos["current_price"]) - float(pos["avg_entry_price"])) * abs(qty),
+                    unrealized_pnl=float(pos.get("unrealized_pnl", 0.0)),
                     market_value=float(pos["market_value"]),
                 ))
             except Exception:

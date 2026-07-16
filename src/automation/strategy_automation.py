@@ -46,20 +46,25 @@ TOURNAMENT_SYMBOLS = [
 
 class StrategyAutomation:
     """Automated strategy development and tournament runner"""
-    
-    def __init__(self, base_dir: str = None):
+
+    def __init__(self, base_dir: str = None, ibkr_client=None):
         self.base_dir = Path(base_dir) if base_dir else Path(__file__).resolve().parent.parent.parent
         self.data_dir = self.base_dir / 'data'
         self.logs_dir = self.base_dir / 'logs'
         self.reports_dir = self.base_dir / 'reports'
-        
+
         # Ensure directories exist
         for dir_path in [self.data_dir, self.logs_dir, self.reports_dir]:
             dir_path.mkdir(exist_ok=True)
-        
+
         # Setup logging
         self._setup_logging()
-        
+
+        # Shared IBKRClient — injected by PaperTrader (or any caller) to avoid
+        # opening a new TWS connection on every _fetch_real_data() call.
+        # Lazy-created on first use if not provided.
+        self._ibkr_client = ibkr_client
+
         # Tournament parameters
         self.tournament_config = {
             'initial_balance': 500.0,
@@ -72,7 +77,7 @@ class StrategyAutomation:
             'val_ratio': 0.15,
             # test_ratio = 1.0 - train_ratio - val_ratio = 0.15 (implicit)
         }
-        
+
         self.logger.info(f"StrategyAutomation initialized at {self.base_dir}")
         # Alert manager (optional)
         self._alert_manager = None
@@ -106,11 +111,18 @@ class StrategyAutomation:
 
     def _fetch_real_data(self, symbol: str, days: int) -> Optional[pd.DataFrame]:
         """
-        Fetch real historical daily bars from Alpaca for a given symbol.
+        Fetch real historical daily bars for a given symbol.
+        Reuses the shared IBKRClient (self._ibkr_client) to avoid opening a new
+        TWS connection per call. Lazy-creates a client if none was injected.
         Returns None if fetch fails (caller falls back to synthetic data).
         """
         try:
-            client = AlpacaClient(host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID)
+            # Lazy-create client only if one wasn't injected at init time
+            if self._ibkr_client is None:
+                self._ibkr_client = AlpacaClient(
+                    host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID
+                )
+            client = self._ibkr_client
             data = client.get_historical_data(symbol, days=days, timeframe='1Day')
             if data is not None and len(data) >= 50:
                 self.logger.info(f"Fetched {len(data)} bars for {symbol}")

@@ -75,6 +75,35 @@ def safe_jsonify(data):
     return json.loads(json.dumps(data, cls=NumpySafeEncoder))
 
 
+# ---------------------------------------------------------------------------
+# Singleton IBKRClient — one shared connection for the entire dashboard.
+# clientId=2 is reserved for the dashboard (paper trader uses 1).
+# Call get_ibkr_client() from any route instead of constructing a new instance.
+# ---------------------------------------------------------------------------
+_ibkr_client = None
+_ibkr_client_lock = threading.Lock()
+
+def get_ibkr_client():
+    """Return the shared IBKRClient, creating or reconnecting it if needed."""
+    global _ibkr_client
+    with _ibkr_client_lock:
+        if _ibkr_client is None:
+            try:
+                from data.ibkr_client import IBKRClient
+                _ibkr_client = IBKRClient(client_id=2)
+            except Exception as e:
+                import logging
+                logging.getLogger("dashboard").warning("IBKRClient init failed: %s", e)
+                return None
+        elif not _ibkr_client.demo_mode and not _ibkr_client._wrapper.is_connected:
+            # Connection dropped — attempt a reconnect in place
+            try:
+                _ibkr_client._ensure_connected()
+            except Exception:
+                pass
+    return _ibkr_client
+
+
 def get_db_connection():
     """Get database connection"""
     db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'tradesight.db')
@@ -121,8 +150,8 @@ def get_polymarket_stats():
 def get_stock_stats():
     """Get stock market statistics"""
     try:
-        # Create scanner
-        scanner = StockScanner()
+        # Create scanner using the shared IBKR client singleton (avoids new connections)
+        scanner = StockScanner(ibkr_client=get_ibkr_client())
         
         # Run a quick scan (using the correct method name)
         scan_result = scanner.quick_scan(limit=5)
@@ -196,25 +225,34 @@ def dashboard():
 
 @app.route('/api/polymarket/stats')
 def polymarket_stats():
-    """API endpoint for Polymarket statistics"""
+    """API endpoint for Polymarket statistics."""
+    try:
+        from config import POLYMARKET_ENABLED
+    except ImportError:
+        POLYMARKET_ENABLED = False
+    if not POLYMARKET_ENABLED:
+        return jsonify({'disabled': True, 'message': 'Prediction market module is currently disabled.'})
     return jsonify(sanitize_for_json(get_polymarket_stats()))
 
 @app.route('/api/polymarket/opportunities')
 def polymarket_opportunities():
-    """API endpoint for Polymarket opportunities"""
+    """API endpoint for Polymarket opportunities."""
+    try:
+        from config import POLYMARKET_ENABLED
+    except ImportError:
+        POLYMARKET_ENABLED = False
+    if not POLYMARKET_ENABLED:
+        return jsonify({'disabled': True, 'message': 'Prediction market module is currently disabled.'})
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Get top opportunities by volume
         cursor.execute('''
             SELECT question, category, volume, price_yes, price_no, last_updated
-            FROM markets 
+            FROM markets
             WHERE volume > 1000
-            ORDER BY volume DESC 
+            ORDER BY volume DESC
             LIMIT 20
         ''')
-        
         opportunities = []
         for row in cursor.fetchall():
             opportunities.append({
@@ -225,10 +263,8 @@ def polymarket_opportunities():
                 'no_price': row[4],
                 'last_updated': row[5]
             })
-        
         conn.close()
         return jsonify(sanitize_for_json(opportunities))
-        
     except Exception as e:
         return jsonify({'error': str(e)})
 
@@ -241,7 +277,7 @@ def stocks_stats():
 def stocks_opportunities():
     """API endpoint for stock opportunities"""
     try:
-        scanner = StockScanner()
+        scanner = StockScanner(ibkr_client=get_ibkr_client())
         scan_result = scanner.quick_scan(limit=7)
         
         opportunities = []
@@ -265,6 +301,111 @@ def stocks_opportunities():
         
     except Exception as e:
         return jsonify({'error': str(e)})
+
+@app.route('/api/stocks/portfolio')
+def stocks_portfolio():
+    """API endpoint for current portfolio state and open/closed positions"""
+    try:
+        from trading.position_manager import PositionManager
+        pm = PositionManager()
+        
+        # Get TWS Connection status
+        client = get_ibkr_client()
+        tws_connected = client is not None and not client.demo_mode
+        
+        # If connected to TWS, fetch the live account values and persist them to DB
+        if tws_connected:
+            try:
+                # 1. Update cash balance
+                account_data = client.get_account()
+                if account_data:
+                    cash = float(account_data.get("cash", 0))
+                    pm.persist_balance_sync(cash)
+                
+                # 2. Update open positions' price and unrealized P&L from TWS portfolio data
+                remote_positions = client.get_remote_positions()
+                if remote_positions:
+                    db_path = pm.data_dir / 'positions.db'
+                    with sqlite3.connect(db_path) as conn:
+                        for r_pos in remote_positions:
+                            symbol = r_pos.get("symbol")
+                            c_price = float(r_pos.get("current_price", 0))
+                            u_pnl = float(r_pos.get("unrealized_pnl", 0))
+                            if symbol and c_price > 0:
+                                conn.execute('''
+                                    UPDATE positions 
+                                    SET current_price = ?, unrealized_pnl = ?, updated_at = CURRENT_TIMESTAMP 
+                                    WHERE symbol = ? AND status = 'open'
+                                ''', (c_price, u_pnl, symbol))
+            except Exception as se:
+                import logging
+                logging.getLogger("dashboard").warning("Failed to sync broker details live in route: %s", se)
+
+
+        # 1. Get Portfolio State (will use the newly persisted balance if successful)
+        portfolio = pm.get_portfolio_state()
+        portfolio_dict = {
+            'total_value': portfolio.total_value,
+            'available_cash': portfolio.available_cash,
+            'total_positions_value': portfolio.total_positions_value,
+            'unrealized_pnl': portfolio.unrealized_pnl,
+            'realized_pnl': portfolio.realized_pnl,
+            'total_pnl': portfolio.total_pnl,
+            'position_count': portfolio.position_count,
+            'strategies_active': portfolio.strategies_active,
+            'balance_synced_at': portfolio.balance_synced_at
+        }
+
+        
+        # 2. Get Open Positions & Trade History from DB
+        db_path = pm.data_dir / 'positions.db'
+        open_positions = []
+        closed_history = []
+        
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            # Fetch active positions
+            rows = conn.execute('''
+                SELECT symbol, strategy, side, quantity, entry_price, current_price, unrealized_pnl, entry_time 
+                FROM positions 
+                WHERE status = 'open'
+                ORDER BY entry_time DESC
+            ''').fetchall()
+            for r in rows:
+                open_positions.append(dict(r))
+                
+            # Fetch recent trade history (last 10 closed trades)
+            history_rows = conn.execute('''
+                SELECT entry_time, exit_time, symbol, side, entry_price, exit_price, realized_pnl, strategy 
+                FROM positions 
+                WHERE status = 'closed'
+                ORDER BY exit_time DESC
+                LIMIT 10
+            ''').fetchall()
+            for r in history_rows:
+                closed_history.append(dict(r))
+                
+        # TWS status check is already handled at route entry
+
+        
+        # Calculate win rate if we have trades
+        win_rate = 0.0
+        with sqlite3.connect(db_path) as conn:
+            total_closed = conn.execute("SELECT COUNT(*) FROM positions WHERE status='closed'").fetchone()[0]
+            if total_closed > 0:
+                wins = conn.execute("SELECT COUNT(*) FROM positions WHERE status='closed' AND realized_pnl > 0").fetchone()[0]
+                win_rate = (wins / total_closed) * 100
+
+        return jsonify(sanitize_for_json({
+            'portfolio': portfolio_dict,
+            'open_positions': open_positions,
+            'history': closed_history,
+            'tws_connected': tws_connected,
+            'win_rate': win_rate
+        }))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/strategy-lab/stats')
 def strategy_lab_stats():
@@ -618,15 +759,12 @@ def alerts_test():
 def emergency_close_all_positions():
     """Close all open IBKR positions and sync local DB. Emergency use only."""
     try:
-        import sys
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/src')
-        from data.ibkr_client import IBKRClient
         from trading.position_manager import PositionManager
         from datetime import datetime
         import sqlite3
 
-        client = IBKRClient()  # connects to local TWS via IBKR_HOST/IBKR_PORT
-        if client.demo_mode:
+        client = get_ibkr_client()
+        if client is None or client.demo_mode:
             return jsonify({'error': 'IBKR not connected (TWS not running or not logged in)'}), 500
 
         ibkr_positions = client.get_remote_positions()
@@ -674,17 +812,12 @@ def emergency_close_all_positions():
 def emergency_restore_positions():
     """Fetch open IBKR positions and restore them to local DB for SL/TP tracking."""
     try:
-        import sys
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/src')
         from trading.position_manager import PositionManager
-        from data.ibkr_client import IBKRClient
-        from config import IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
         from datetime import datetime
         import sqlite3
 
-        # Initialize IBKR client
-        client = IBKRClient(host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID)
-        if client.demo_mode:
+        client = get_ibkr_client()
+        if client is None or client.demo_mode:
             return jsonify({'error': 'IBKR Client is running in demo mode or TWS is disconnected'}), 500
 
         ibkr_positions = client.get_remote_positions()

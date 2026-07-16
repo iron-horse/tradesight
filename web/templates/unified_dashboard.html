@@ -331,6 +331,8 @@
             </table>
         </div>
 
+        <!-- Polymarket section — shown/hidden based on POLYMARKET_ENABLED in config.py -->
+        <div id="polymarket-section" style="display:none">
         <div class="section-label">🌐 Polymarket Opportunities</div>
         <div class="stats-row" id="poly-stats">
             <div class="card"><div class="value">--</div><h3>Loading...</h3></div>
@@ -357,6 +359,7 @@
                 </tbody>
             </table>
         </div>
+        </div><!-- end Polymarket disabled -->
     </div>
 
     <!-- ===== STRATEGY LAB TAB ===== -->
@@ -444,9 +447,14 @@
                 <div class="sub">No active trades</div>
             </div>
             <div class="card">
-                <h3>Total P&L</h3>
+                <h3>Unrealized P&L</h3>
                 <div class="value">$0.00</div>
-                <div class="sub">No trades executed</div>
+                <div class="sub">Active positions</div>
+            </div>
+            <div class="card">
+                <h3>Realized P&L</h3>
+                <div class="value">$0.00</div>
+                <div class="sub">Closed positions</div>
             </div>
             <div class="card">
                 <h3>Win Rate</h3>
@@ -458,7 +466,7 @@
         <div class="table-card">
             <div class="table-header">
                 <h2>📋 Active Positions</h2>
-                <span class="badge badge-yellow">Demo Mode</span>
+                <span class="badge badge-yellow" id="tws-status">Checking TWS...</span>
             </div>
             <table>
                 <thead>
@@ -466,14 +474,15 @@
                         <th>Symbol</th>
                         <th>Strategy</th>
                         <th>Side</th>
+                        <th>Quantity</th>
                         <th>Entry Price</th>
-                        <th>Current</th>
+                        <th>Current Price</th>
                         <th>P&L</th>
                         <th>Duration</th>
                     </tr>
                 </thead>
                 <tbody id="paper-positions">
-                    <tr><td colspan="7" class="empty-msg">No active positions — run a tournament to find winning strategies, then deploy to paper trading</td></tr>
+                    <tr><td colspan="8" class="empty-msg">No active positions — run tournament to optimize strategies, then deploy to paper trader</td></tr>
                 </tbody>
             </table>
         </div>
@@ -486,23 +495,23 @@
                         <th>Date</th>
                         <th>Symbol</th>
                         <th>Side</th>
-                        <th>Price</th>
+                        <th>Entry Price</th>
+                        <th>Exit Price</th>
                         <th>P&L</th>
                         <th>Strategy</th>
                     </tr>
                 </thead>
                 <tbody id="paper-history">
-                    <tr><td colspan="6" class="empty-msg">No trade history yet. Configure API keys in Settings to enable live paper trading.</td></tr>
+                    <tr><td colspan="7" class="empty-msg">No trade history yet. Run a paper trading session to execute trades.</td></tr>
                 </tbody>
             </table>
         </div>
 
         <div class="card" style="margin-top: 16px; border: 1px dashed #2d3748;">
-            <h3 style="margin-bottom: 8px;">🔧 Paper Trading Setup</h3>
+            <h3 style="margin-bottom: 8px;">🔧 Interactive Brokers (IBKR) Setup</h3>
             <p style="color: #94a3b8; font-size: 0.9em; line-height: 1.6;">
-                Paper trading uses tournament-winning strategies with live market data via Alpaca.<br>
-                <strong>Symbols:</strong> AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META, NFLX<br>
-                <strong>Status:</strong> <span class="badge badge-yellow">Demo Mode — No API keys configured</span>
+                Paper trading uses the latest tournament-winning strategy parameters via your locally running Trader Workstation (TWS).<br>
+                <strong>TWS Connection:</strong> <span class="badge badge-yellow" id="tws-setup-status">Checking TWS...</span>
             </p>
         </div>
     </div>
@@ -672,7 +681,15 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-' + name).classList.add('active');
-        event.target.classList.add('active');
+        
+        // Safe tab activation: find button with matching onclick parameter
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(name)) {
+                btn.classList.add('active');
+            }
+        });
+        
         activeTab = name;
         loadTabData(name);
         if (name === 'alerts') loadAlertsData();
@@ -682,7 +699,7 @@
         if (name === 'markets') loadMarkets();
         else if (name === 'strategy-lab') loadStrategyLab();
         else if (name === 'system') loadSystem();
-        // paper-trading is mostly static until API keys configured
+        else if (name === 'paper-trading') loadPaperTrading();
     }
 
     function fmt(n, dec=1) {
@@ -742,36 +759,37 @@
             document.getElementById('stock-opportunities').innerHTML = '<tr><td colspan="8" class="empty-msg">Failed to load stock data</td></tr>';
         });
 
-        // Polymarket stats
+        // Polymarket — only load if enabled on the backend
         fetch('/api/polymarket/stats').then(r => r.json()).then(d => {
+            if (d.disabled) return;  // feature flag off
+            document.getElementById('polymarket-section').style.display = '';
             document.getElementById('poly-stats').innerHTML = `
                 <div class="card"><h3>Total Markets</h3><div class="value blue">${d.total_markets || 0}</div></div>
                 <div class="card"><h3>Active</h3><div class="value green">${d.active_markets || 0}</div></div>
                 <div class="card"><h3>High Volume</h3><div class="value">${d.high_volume_markets || 0}</div></div>
                 <div class="card"><h3>Last Scan</h3><div class="value">${d.last_scan ? new Date(d.last_scan).toLocaleDateString() : 'Never'}</div></div>`;
-        }).catch(() => {});
 
-        // Polymarket opportunities
-        fetch('/api/polymarket/opportunities').then(r => r.json()).then(data => {
-            const arr = Array.isArray(data) ? data : [];
-            document.getElementById('poly-count').textContent = arr.length + ' markets';
-            if (arr.length === 0) {
-                document.getElementById('poly-opportunities').innerHTML = '<tr><td colspan="7" class="empty-msg">No prediction markets found</td></tr>';
-                return;
-            }
-            document.getElementById('poly-opportunities').innerHTML = arr.map(o => {
-                const spread = o.yes_price && o.no_price ? Math.abs(o.yes_price - o.no_price).toFixed(3) : '--';
-                return `
-                <tr>
-                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(o.question||'').replace(/"/g,'&quot;')}">${o.question || '--'}</td>
-                    <td><span class="badge badge-blue">${o.category || 'Unknown'}</span></td>
-                    <td>${o.volume ? '$' + Number(o.volume).toLocaleString() : '--'}</td>
-                    <td class="positive">${o.yes_price != null ? '$' + Number(o.yes_price).toFixed(3) : '--'}</td>
-                    <td class="negative">${o.no_price != null ? '$' + Number(o.no_price).toFixed(3) : '--'}</td>
-                    <td>${spread}</td>
-                    <td>${o.last_updated ? new Date(o.last_updated).toLocaleDateString() : '--'}</td>
-                </tr>`;
-            }).join('');
+            fetch('/api/polymarket/opportunities').then(r => r.json()).then(data => {
+                const arr = Array.isArray(data) ? data : [];
+                document.getElementById('poly-count').textContent = arr.length + ' markets';
+                if (arr.length === 0) {
+                    document.getElementById('poly-opportunities').innerHTML = '<tr><td colspan="7" class="empty-msg">No prediction markets found</td></tr>';
+                    return;
+                }
+                document.getElementById('poly-opportunities').innerHTML = arr.map(o => {
+                    const spread = o.yes_price && o.no_price ? Math.abs(o.yes_price - o.no_price).toFixed(3) : '--';
+                    return `
+                    <tr>
+                        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(o.question||'').replace(/"/g,'&quot;')}">${o.question || '--'}</td>
+                        <td><span class="badge badge-blue">${o.category || 'Unknown'}</span></td>
+                        <td>${o.volume ? '$' + Number(o.volume).toLocaleString() : '--'}</td>
+                        <td class="positive">${o.yes_price != null ? '$' + Number(o.yes_price).toFixed(3) : '--'}</td>
+                        <td class="negative">${o.no_price != null ? '$' + Number(o.no_price).toFixed(3) : '--'}</td>
+                        <td>${spread}</td>
+                        <td>${o.last_updated ? new Date(o.last_updated).toLocaleDateString() : '--'}</td>
+                    </tr>`;
+                }).join('');
+            }).catch(() => {});
         }).catch(() => {});
     }
 
@@ -905,13 +923,14 @@
     // ===== SYSTEM =====
     function loadSystem() {
         const endpoints = [
-            {url: '/api/polymarket/stats', name: 'Polymarket Stats'},
-            {url: '/api/polymarket/opportunities', name: 'Polymarket Opportunities'},
+            // {url: '/api/polymarket/stats', name: 'Polymarket Stats'},      // disabled
+            // {url: '/api/polymarket/opportunities', name: 'Polymarket Opportunities'}, // disabled
             {url: '/api/stocks/stats', name: 'Stock Stats'},
             {url: '/api/stocks/opportunities', name: 'Stock Opportunities'},
             {url: '/api/strategy-lab/stats', name: 'Strategy Lab Stats'},
             {url: '/api/strategy-lab/status', name: 'Tournament Status'},
             {url: '/api/strategy-lab/history', name: 'Tournament History'},
+            {url: '/api/stocks/portfolio', name: 'Stocks Portfolio'},
         ];
 
         // Check each endpoint
@@ -930,16 +949,22 @@
 
         // Module stats
         Promise.all([
-            fetch('/api/polymarket/stats').then(r => r.json()).catch(() => ({})),
+            // fetch('/api/polymarket/stats') disabled
             fetch('/api/stocks/stats').then(r => r.json()).catch(() => ({})),
             fetch('/api/strategy-lab/stats').then(r => r.json()).catch(() => ({})),
-        ]).then(([poly, stocks, strat]) => {
+            fetch('/api/stocks/portfolio').then(r => r.json()).catch(() => ({})),
+        ]).then(([stocks, strat, portfolioData]) => {
+            const hasPortfolio = portfolioData && portfolioData.portfolio;
+            const twsConnected = portfolioData && portfolioData.tws_connected;
+            const activePosCount = portfolioData && portfolioData.open_positions ? portfolioData.open_positions.length : 0;
+            
             document.getElementById('module-stats').innerHTML = `
+                <!-- Polymarket Scanner row disabled
                 <tr>
                     <td>Polymarket Scanner</td>
-                    <td><span class="badge ${poly.total_markets > 0 ? 'badge-green' : 'badge-yellow'}">${poly.total_markets > 0 ? 'Active' : 'No Data'}</span></td>
-                    <td>${poly.total_markets || 0} markets tracked</td>
-                </tr>
+                    <td><span class="badge">Disabled</span></td>
+                    <td>Prediction market module is currently disabled</td>
+                </tr> -->
                 <tr>
                     <td>Stock Scanner</td>
                     <td><span class="badge ${stocks.total_scanned > 0 ? 'badge-green' : 'badge-yellow'}">${stocks.total_scanned > 0 ? 'Active' : 'Demo'}</span></td>
@@ -952,15 +977,137 @@
                 </tr>
                 <tr>
                     <td>Paper Trading</td>
-                    <td><span class="badge badge-yellow">Demo</span></td>
-                    <td>No API keys configured</td>
+                    <td><span class="badge ${twsConnected ? 'badge-green' : 'badge-yellow'}">${twsConnected ? 'Live (TWS)' : 'Demo'}</span></td>
+                    <td>${activePosCount} active positions tracked</td>
                 </tr>`;
+        });
+    }
+
+    // ===== PAPER TRADING =====
+    function loadPaperTrading() {
+        fetch('/api/stocks/portfolio').then(r => r.json()).then(data => {
+            if (data.error) {
+                console.error("Error loading portfolio data:", data.error);
+                return;
+            }
+            
+            const port = data.portfolio || {};
+            const positions = data.open_positions || [];
+            const history = data.history || [];
+            const twsConnected = data.tws_connected;
+            const winRate = data.win_rate || 0.0;
+            
+            // 1. Update stats cards
+            const statsContainer = document.getElementById('paper-stats');
+            if (statsContainer) {
+                statsContainer.innerHTML = `
+                    <div class="card">
+                        <h3>Portfolio Value</h3>
+                        <div class="value green">${fmtMoney(port.total_value)}</div>
+                        <div class="sub">Cash + Position Value</div>
+                    </div>
+                    <div class="card">
+                        <h3>Open Positions</h3>
+                        <div class="value blue">${positions.length}</div>
+                        <div class="sub">Active trades</div>
+                    </div>
+                    <div class="card">
+                        <h3>Unrealized P&L</h3>
+                        <div class="value ${pnlClass(port.unrealized_pnl)}">${fmtMoney(port.unrealized_pnl)}</div>
+                        <div class="sub">Active positions</div>
+                    </div>
+                    <div class="card">
+                        <h3>Realized P&L</h3>
+                        <div class="value ${pnlClass(port.realized_pnl)}">${fmtMoney(port.realized_pnl)}</div>
+                        <div class="sub">Closed positions</div>
+                    </div>
+                    <div class="card">
+                        <h3>Win Rate</h3>
+                        <div class="value">${winRate.toFixed(1)}%</div>
+                        <div class="sub">From closed history</div>
+                    </div>
+                `;
+            }
+            
+            // 2. Update TWS Connection Status Badges
+            const twsStatus = document.getElementById('tws-status');
+            if (twsStatus) {
+                twsStatus.className = twsConnected ? 'badge badge-green' : 'badge badge-yellow';
+                twsStatus.textContent = twsConnected ? 'TWS Connected' : 'TWS Offline (Demo)';
+            }
+            
+            const twsSetupStatus = document.getElementById('tws-setup-status');
+            if (twsSetupStatus) {
+                twsSetupStatus.className = twsConnected ? 'badge badge-green' : 'badge badge-yellow';
+                twsSetupStatus.textContent = twsConnected ? 'TWS Connected (Live Trading)' : 'TWS Offline (Fallback to Demo Mode)';
+            }
+            
+            // 3. Populate Active Positions
+            const posBody = document.getElementById('paper-positions');
+            if (posBody) {
+                if (positions.length === 0) {
+                    posBody.innerHTML = '<tr><td colspan="8" class="empty-msg">No active positions — run tournament to optimize strategies, then deploy to paper trader</td></tr>';
+                } else {
+                    posBody.innerHTML = positions.map(pos => {
+                        const sideBadge = pos.side === 'long' ? 'badge-green' : 'badge-red';
+                        // Simple duration string calculation
+                        let durationStr = 'Just entry';
+                        if (pos.entry_time) {
+                            try {
+                                const diffMs = new Date() - new Date(pos.entry_time);
+                                const diffMins = Math.floor(diffMs / 60000);
+                                if (diffMins < 60) durationStr = diffMins + 'm';
+                                else durationStr = Math.floor(diffMins/60) + 'h ' + (diffMins%60) + 'm';
+                            } catch (e) {}
+                        }
+                        return `
+                            <tr>
+                                <td><strong>${pos.symbol}</strong></td>
+                                <td>${pos.strategy || '--'}</td>
+                                <td><span class="badge ${sideBadge}">${(pos.side || 'long').toUpperCase()}</span></td>
+                                <td>${pos.quantity}</td>
+                                <td>${fmtMoney(pos.entry_price)}</td>
+                                <td>${fmtMoney(pos.current_price)}</td>
+                                <td><span class="${pnlClass(pos.unrealized_pnl)}">${fmtMoney(pos.unrealized_pnl)}</span></td>
+                                <td>${durationStr}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+            
+            // 4. Populate Trade History
+            const histBody = document.getElementById('paper-history');
+            if (histBody) {
+                if (history.length === 0) {
+                    histBody.innerHTML = '<tr><td colspan="7" class="empty-msg">No trade history yet. Run a paper trading session to execute trades.</td></tr>';
+                } else {
+                    histBody.innerHTML = history.map(h => {
+                        const sideBadge = h.side === 'long' ? 'badge-green' : 'badge-red';
+                        const formattedDate = h.exit_time ? new Date(h.exit_time).toLocaleDateString() : '--';
+                        return `
+                            <tr>
+                                <td>${formattedDate}</td>
+                                <td><strong>${h.symbol}</strong></td>
+                                <td><span class="badge ${sideBadge}">${(h.side || 'long').toUpperCase()}</span></td>
+                                <td>${fmtMoney(h.entry_price)}</td>
+                                <td>${fmtMoney(h.exit_price)}</td>
+                                <td><span class="${pnlClass(h.realized_pnl)}">${fmtMoney(h.realized_pnl)}</span></td>
+                                <td>${h.strategy || '--'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+        }).catch(err => {
+            console.error("Error fetching paper trading data:", err);
         });
     }
 
     // Initial load
     document.addEventListener('DOMContentLoaded', () => {
         loadMarkets();
+        loadPaperTrading();
         document.getElementById('header-time').textContent = new Date().toLocaleTimeString();
     });
 

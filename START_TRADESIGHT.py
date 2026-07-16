@@ -9,13 +9,18 @@ import sys
 import time
 
 def main():
+    # Resolve project directory relative to this script
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(project_dir)
+    
+    # Auto-redirect to local venv python if running with system python
+    venv_python = os.path.abspath(os.path.join(project_dir, ".venv", "bin", "python"))
+    if os.path.exists(venv_python) and ".venv" not in sys.executable:
+        os.execv(venv_python, [venv_python] + sys.argv)
+
     print("🎯 TradeSight - Trading Intelligence Platform")
     print("=" * 50)
     print("🚀 Starting dashboard...")
-    
-    # Change to TradeSight directory (resolve relative to this script)
-    project_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(project_dir)
     # Prioritize project root to load the new web/dashboard.py, append src for internal imports
     sys.path.insert(0, project_dir)
     sys.path.append(os.path.join(project_dir, "src"))

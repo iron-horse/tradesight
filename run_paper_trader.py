@@ -52,6 +52,28 @@ def main():
         print(f"   Open:         {portfolio.position_count}")
         strats = ', '.join(portfolio.strategies_active) if portfolio.strategies_active else 'none'
         print(f"   Strategies:   {strats}")
+    elif mode == "--loop":
+        import time
+        trade_mode = "ALPACA PAPER" if api_key else "IBKR PAPER"
+        print("=" * 60)
+        print("🚀 Starting Continuous Paper Trading Loop (5-minute intervals)...")
+        print(f"   Mode: {trade_mode}")
+        print("💡 Keep this terminal window open. Press Ctrl+C to exit.")
+        print("=" * 60)
+        
+        try:
+            while True:
+                ts = datetime.now().strftime('%Y-%m-%d %H:%M')
+                print(f"\n⏰ [{ts}] Executing trading session...")
+                try:
+                    report = trader.run_trading_session()
+                    print(report)
+                except Exception as run_e:
+                    print(f"❌ Session Execution Error: {run_e}")
+                print("⏳ Sleeping 5 minutes before next scan...")
+                time.sleep(300)
+        except KeyboardInterrupt:
+            print("\n👋 Continuous trading loop stopped by user.")
     else:
         ts = datetime.now().strftime('%Y-%m-%d %H:%M')
         trade_mode = "ALPACA PAPER" if api_key else "IBKR PAPER"

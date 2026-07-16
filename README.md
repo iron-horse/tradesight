@@ -1,6 +1,3 @@
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rmbell09-lang/tradesight/blob/main/intro_demo.ipynb)
-[![PyPI version](https://badge.fury.io/py/tradesight.svg)](https://pypi.org/project/tradesight/)
-
 # 🎯 TradeSight — Python Algorithmic Trading & Backtesting Strategy Lab
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -14,7 +11,7 @@
 
 **Build, test, and evolve trading strategies with AI — entirely on your own machine. No cloud subscription. No data leaks. No monthly fees.**
 
-TradeSight is a self-hosted Python app that runs AI-powered strategy tournaments overnight, backtests technical indicators, and executes paper trades via Alpaca — all from a local web dashboard.
+TradeSight is a self-hosted Python app that runs AI-powered strategy tournaments overnight, backtests technical indicators, and executes paper trades via Interactive Brokers (IBKR) TWS — all from a local web dashboard.
 
 Public proof snapshot: https://rentry.co/tradesight-public-credibility-proof-20260620
 
@@ -42,11 +39,12 @@ TradeSight is for research, backtesting, and paper trading. It is not financial 
 | 🧬 **AI Strategy Tournaments** | Automated overnight evolution of trading strategies — the best wins, rest are retired |
 | 🛡️ **Safer Optimizer Promotion Gates** | Family-aware RSI/MACD/Momentum tuning with OOS, walk-forward, regime, Monte Carlo, and overfit checks before any parameter promotion |
 | 📊 **15+ Technical Indicators** | MACD, RSI, Bollinger Bands, EMA crossovers, ATR, volume analysis, and more |
-| 💸 **Paper Trading** | Connect an Alpaca paper account — trade with simulated funds and track paper-only P&L |
-| 🔍 **Multi-Market Scanner** | Scan stocks + Polymarket prediction markets for signals simultaneously |
-| 🌐 **Web Dashboard** | Real-time Flask interface — positions, signals, tournament results, logs |
+| 💸 **IBKR Paper Trading** | Connect a locally running Interactive Brokers TWS or Gateway session — trade with simulated funds |
+| 🔍 **Stock Signal Scanner** | Scan S&P 500 stocks for signals dynamically during market hours |
+| 🌐 **Web Dashboard** | Real-time Flask interface — positions, signals, tournament results, logs, split Unrealized/Realized P&L |
 | ⏰ **Cron Automation** | Overnight strategy improvement runs automatically — wake up to new results |
 | 🔒 **100% Local** | Runs on your machine. Your strategies stay yours. |
+
 
 ---
 
@@ -55,15 +53,9 @@ TradeSight is for research, backtesting, and paper trading. It is not financial 
 ### Requirements
 - Python 3.11+
 - macOS or Linux (Windows via WSL)
-- [Alpaca paper trading account](https://alpaca.markets/) (free, optional — demo mode works without it)
+- [Interactive Brokers Trader Workstation (TWS)](https://www.interactivebrokers.com/en/trading/tws.php) logged into a Paper Trading account
 
 ### Install
-
-**macOS (Homebrew):**
-```bash
-brew tap rmbell09-lang/tradesight
-brew install tradesight
-```
 
 **From source:**
 ```bash
@@ -76,23 +68,47 @@ pip install -r requirements.txt
 
 ### Run
 
+1. Open your Trader Workstation (TWS) and ensure the API is enabled:
+   * Go to **Edit** (or **TWS**) → **Global Configuration** → **API** → **Settings**.
+   * Check **"Enable ActiveX and Socket Clients"**.
+   * Set **Socket port** to `7497` (or change TWS port in `src/config.py`).
+2. Run the launcher script:
 ```bash
 python3 START_TRADESIGHT.py
 ```
 
 Dashboard opens at **http://localhost:5000**
 
-### Demo Mode (No API Keys Required)
-TradeSight runs fully in demo mode with simulated market data — no Alpaca account needed to explore.
+> [!TIP]
+> **Automatic Virtual Environment Detection:** Both `START_TRADESIGHT.py` and `START_PAPER_TRADER.py` automatically detect if they are executed with the system Python (or inside a deactivated terminal) and will seamlessly re-execute inside the project's local `.venv` environment under the hood. You do not need to activate `.venv` manually.
 
-### Alpaca Paper Trading (Optional)
-1. Create a free [Alpaca paper account](https://alpaca.markets/)
-2. Export your paper-trading API keys before launching:
-```bash
-export ALPACA_API_KEY="YOUR_KEY"
-export ALPACA_SECRET_KEY="YOUR_SECRET"
-python3 START_TRADESIGHT.py
-```
+
+---
+
+## 📖 Day-to-Day Operation
+
+To get the most out of TradeSight, follow this daily routine:
+
+### 1. 🌅 Morning Routine (Before 9:30 AM EST Market Open)
+* **Start TWS:** Sign into your TWS Paper Trading account.
+* **Launch Dashboard:** In a terminal, run `python START_TRADESIGHT.py`.
+* **Launch Paper Trader Loop:** In another terminal window, run the loop launcher script:
+  ```bash
+  python3 START_PAPER_TRADER.py
+  ```
+
+### 2. 📈 Market Hours (9:30 AM – 4:00 PM EST)
+* Monitor active positions, entries, win rate, and **Unrealized P&L** vs **Realized P&L** live from the dashboard webpage. The page auto-refreshes every 30 seconds.
+
+### 3. 🌌 Post-Market (After 4:00 PM EST Close)
+* Run the overnight optimizer to backtest the day's market data, evaluate strategies, and save the updated "champion" parameters for tomorrow morning:
+  ```bash
+  .venv/bin/python scripts/overnight_strategy_evolution.py
+  ```
+
+> 📖 **Detailed operational playbook:** For details on system configuration, crontab automation, and database recovery, see the [Operator Manual](file:///Users/bhargavpatel/Projects/Trade/tradesight/OPERATOR_MANUAL.md).
+
+
 
 ---
 
@@ -162,10 +178,11 @@ Important limits:
 
 - [x] Multi-indicator technical analysis (15+ indicators)
 - [x] AI strategy tournament engine
-- [x] Alpaca paper trading integration
+- [x] Interactive Brokers (IBKR) paper trading integration
 - [x] Real-time web dashboard
 - [x] Overnight automation (cron)
 - [x] Family-aware optimizer validation with OOS, walk-forward, regime, and overfit gates
+
 - [ ] Phase 1: Active stop-loss + take-profit execution
 - [ ] Phase 1: Trailing stop with high-water mark
 - [ ] Phase 2: Confluence strategy (multi-indicator entry gates)

@@ -27,21 +27,38 @@ for directory in [DATA_DIR, CONFIG_DIR, LOGS_DIR]:
 # ---------------------------------------------------------------------------
 # IBKR TWS connection settings
 # No API secrets needed — IBKR connects to the locally running TWS app.
+# Each process MUST use a unique clientId or TWS will reject with TimeoutError.
+#   clientId=1  → paper trader  (run_paper_trader.py)
+#   clientId=2  → web dashboard (web/dashboard.py)
+#   clientId=3  → emergency close endpoint
+#   clientId=4  → emergency restore endpoint
 # ---------------------------------------------------------------------------
 IBKR_HOST      = "127.0.0.1"
 IBKR_PORT      = 7497
-IBKR_CLIENT_ID = 1
+IBKR_CLIENT_ID = 1   # paper trader default
+FORCE_YAHOO_QUOTES = True
+
+# Set to True to skip TWS connection entirely and run in demo/Yahoo-only mode.
+# Useful when TWS is not running — avoids the 10-second timeout on every startup.
+IBKR_DEMO_MODE = False
 
 # Trading Configuration
 USE_PAPER_TRADING = True  # Always start with paper trading for safety
 MAX_POSITION_SIZE = 0.10  # 10% of portfolio per position
 MAX_DAILY_TRADES = 10
-STOP_LOSS_PERCENTAGE = 0.05  # 5% stop lossstop asdfadsdsfaa
+STOP_LOSS_PERCENTAGE = 0.05  # 5% stop loss
 TAKE_PROFIT_PERCENTAGE = 0.10  # 10% take profit
 
 # Scanner Configuration
 SCAN_INTERVAL_SECONDS = 300  # 5 minutes
 MAX_CONCURRENT_SCANS = 3
+
+# ---------------------------------------------------------------------------
+# Feature Flags
+# ---------------------------------------------------------------------------
+# Set to True to re-enable the Polymarket / prediction markets module.
+# When False: API routes return a disabled stub, UI section is hidden.
+POLYMARKET_ENABLED = False
 
 # Database Configuration  
 DATABASE_URL = f"sqlite:///{DATA_DIR / 'tradesight.db'}"

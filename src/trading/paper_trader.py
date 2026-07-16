@@ -101,9 +101,10 @@ class ExponentialBackoffWebSocketSupervisor:
 
 class PaperTrader:
     """Orchestrates paper trading with tournament-winning strategies"""
-    
-    def __init__(self, base_dir: str = None, alpaca_api_key: str = None, 
-                 alpaca_secret: str = None, initial_balance: float = 500.0):
+
+    def __init__(self, base_dir: str = None, alpaca_api_key: str = None,
+                 alpaca_secret: str = None, initial_balance: float = 500.0,
+                 ibkr_client=None):
         resolved_base = Path(base_dir).resolve() if base_dir else Path(__file__).resolve().parent.parent.parent
         # Normalize callers that pass project/src instead of project root.
         # Using different base dirs creates split SQLite state (data/positions.db vs src/data/positions.db)
@@ -120,7 +121,19 @@ class PaperTrader:
         
         # Initialize components
         self.position_manager = PositionManager(base_dir=self.base_dir, initial_balance=initial_balance)
-        self.automation = StrategyAutomation(base_dir=self.base_dir)
+
+        # Initialize IBKR client first so it can be shared with StrategyAutomation.
+        # Accept an injected client (useful for tests); otherwise create from config.
+        import math as _math
+        from config import IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
+        if ibkr_client is not None:
+            self.alpaca = ibkr_client
+        else:
+            self.alpaca = AlpacaClient(host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID)
+
+        # Pass the shared client into StrategyAutomation so _fetch_real_data()
+        # reuses the same connection instead of opening a new one per symbol.
+        self.automation = StrategyAutomation(base_dir=self.base_dir, ibkr_client=self.alpaca)
         
         # Active params — loaded from ChampionTracker (optimizer winning params)
         self.active_params: Dict = {}
@@ -162,10 +175,7 @@ class PaperTrader:
         else:
             self.alert_manager = None
 
-        # Initialize IBKR client (demo mode if TWS is not running)
-        import math as _math
-        from config import IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
-        self.alpaca = AlpacaClient(host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID)
+        # (self.alpaca already initialized above, before StrategyAutomation)
         
         # Load per-symbol OOS performance (from optimizer)
         self._symbol_performance = {}
