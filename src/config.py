@@ -28,15 +28,15 @@ for directory in [DATA_DIR, CONFIG_DIR, LOGS_DIR]:
 # IBKR TWS connection settings
 # No API secrets needed — IBKR connects to the locally running TWS app.
 # ---------------------------------------------------------------------------
-IBKR_HOST      = os.environ.get("IBKR_HOST",      "127.0.0.1")
-IBKR_PORT      = int(os.environ.get("IBKR_PORT",  "7497"))   # 7497=TWS paper, 4002=IB Gateway paper
-IBKR_CLIENT_ID = int(os.environ.get("IBKR_CLIENT_ID", "1"))
+IBKR_HOST      = "127.0.0.1"
+IBKR_PORT      = 7497
+IBKR_CLIENT_ID = 1
 
 # Trading Configuration
 USE_PAPER_TRADING = True  # Always start with paper trading for safety
 MAX_POSITION_SIZE = 0.10  # 10% of portfolio per position
 MAX_DAILY_TRADES = 10
-STOP_LOSS_PERCENTAGE = 0.05  # 5% stop loss
+STOP_LOSS_PERCENTAGE = 0.05  # 5% stop lossstop asdfadsdsfaa
 TAKE_PROFIT_PERCENTAGE = 0.10  # 10% take profit
 
 # Scanner Configuration

@@ -220,13 +220,21 @@ def api_performance():
             # Balance sync
             portfolio_value = 500.0 + total_pnl
             try:
+                # Try portfolio_history first (contains real total value from IBKR)
                 bal = conn.execute(
-                    "SELECT balance FROM balance_sync ORDER BY synced_at DESC LIMIT 1"
+                    "SELECT total_value FROM portfolio_history ORDER BY timestamp DESC LIMIT 1"
                 ).fetchone()
                 if bal:
                     portfolio_value = bal[0]
+                else:
+                    # Fallback to balance_cache (buying_power/cash)
+                    bal_cache = conn.execute(
+                        "SELECT buying_power FROM balance_cache ORDER BY synced_at DESC LIMIT 1"
+                    ).fetchone()
+                    if bal_cache:
+                        portfolio_value = bal_cache[0]
             except Exception as e:
-                logger.warning(f"Failed to read balance_sync: {e}")
+                logger.warning(f"Failed to read balance history: {e}")
             
             return jsonify({
                 'portfolio_value': round(portfolio_value, 2),

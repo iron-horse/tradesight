@@ -44,6 +44,9 @@ class NumpySafeEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
+# Set IBKR_CLIENT_ID to 2 for the web dashboard to prevent conflicts with run_paper_trader.py (which uses client_id 1)
+os.environ["IBKR_CLIENT_ID"] = os.environ.get("IBKR_CLIENT_ID", "2")
+
 # Add project root to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
@@ -669,35 +672,32 @@ def emergency_close_all_positions():
 
 @app.route('/api/emergency/restore-positions', methods=['POST'])
 def emergency_restore_positions():
-    """Fetch open Alpaca positions and restore them to local DB for SL/TP tracking."""
+    """Fetch open IBKR positions and restore them to local DB for SL/TP tracking."""
     try:
         import sys
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/src')
         from trading.position_manager import PositionManager
+        from data.ibkr_client import IBKRClient
+        from config import IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
         from datetime import datetime
-        import sqlite3, requests
+        import sqlite3
 
-        api_key = os.environ.get('ALPACA_API_KEY', '')
-        secret_key = os.environ.get('ALPACA_SECRET_KEY', '') or os.environ.get('ALPACA_SECRET', '')
-        if not api_key or not secret_key:
-            return jsonify({'error': 'Alpaca keys not in env'}), 500
+        # Initialize IBKR client
+        client = IBKRClient(host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID)
+        if client.demo_mode:
+            return jsonify({'error': 'IBKR Client is running in demo mode or TWS is disconnected'}), 500
 
-        headers = {'APCA-API-KEY-ID': api_key, 'APCA-API-SECRET-KEY': secret_key}
-        r = requests.get('https://paper-api.alpaca.markets/v2/positions', headers=headers, timeout=10)
-        if r.status_code != 200:
-            return jsonify({'error': f'Alpaca fetch failed: {r.text}'}), 500
-
-        alpaca_positions = r.json()
+        ibkr_positions = client.get_remote_positions()
         pm = PositionManager()
         db_path = pm.data_dir / 'positions.db'
         restored = []
 
         with sqlite3.connect(db_path) as conn:
-            for pos in alpaca_positions:
+            for pos in ibkr_positions:
                 symbol = pos.get('symbol')
                 qty = float(pos.get('qty', 0))
                 entry_price = float(pos.get('avg_entry_price', 0))
-                side = 'long' if float(pos.get('qty', 0)) > 0 else 'short'
+                side = pos.get('side', 'long')
 
                 # Check if already in DB
                 existing = conn.execute(
@@ -714,7 +714,7 @@ def emergency_restore_positions():
                     restored.append({'symbol': symbol, 'qty': qty, 'entry_price': entry_price})
                     conn.commit()
 
-        return jsonify({'restored': restored, 'alpaca_positions': len(alpaca_positions)})
+        return jsonify({'restored': restored, 'alpaca_positions': len(ibkr_positions)})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

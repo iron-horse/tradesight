@@ -157,6 +157,41 @@ class _IBKRSyncWrapper:
                 "[IBKRClient] Connected to TWS at %s:%d clientId=%d",
                 self.host, self.port, self.client_id,
             )
+
+            # Wait for TWS handshake to complete and managedAccounts to populate
+            # (managedAccounts() is empty immediately after connectAsync returns)
+            async def _subscribe_account():
+                # Poll until managedAccounts is populated (up to 3 seconds)
+                for _ in range(15):
+                    accounts = self._ib.managedAccounts()
+                    if accounts:
+                        break
+                    await asyncio.sleep(0.2)
+                else:
+                    logger.warning("[IBKRClient] managedAccounts() still empty after 3s — account sync may fail")
+                    accounts = []
+
+                account = accounts[0] if accounts else ""
+                logger.info("[IBKRClient] Subscribing to account updates for: %s", account or "<empty>")
+
+                # Fire-and-forget subscriptions — these start streaming account data into the cache
+                self._ib.reqAccountUpdates(account)   # populates accountValues()
+                self._ib.reqAccountSummary()          # populates accountSummary()
+
+                # Wait for the first batch of data to arrive from TWS
+                await asyncio.sleep(2.0)
+                logger.info(
+                    "[IBKRClient] Account subscription ready — %d values cached",
+                    len(self._ib.accountValues())
+                )
+
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    _subscribe_account(), self._loop
+                ).result(timeout=10)
+            except Exception as sub_e:
+                logger.warning("[IBKRClient] Account subscription failed (non-fatal): %s", sub_e)
+
             return True
         except Exception as e:
             logger.warning("[IBKRClient] Could not connect to TWS: %s", e)
@@ -349,26 +384,71 @@ class IBKRClient:
     # ------------------------------------------------------------------
 
     def get_quote(self, symbol: str) -> Optional[StockQuote]:
+        force_yahoo = True
+
+        if force_yahoo:
+            logger.info("[IBKRClient] get_quote(%s): FORCE_YAHOO_QUOTES is enabled — prioritizing Yahoo Finance query...", symbol)
+            yf_quote = self._get_yahoo_quote_fallback(symbol)
+            if yf_quote:
+                return yf_quote
+            logger.warning("[IBKRClient] get_quote(%s): Forced Yahoo Finance query failed — falling back to TWS query...", symbol)
+
         if self.demo_mode or not self._ensure_connected():
             return self._generate_demo_quote(symbol)
 
         try:
             contract = self._make_contract(symbol)
-            ticker = self._wrapper.run_async(
-                self._wrapper.ib.reqTickersAsync(contract),
-                timeout=15,
-            )
-            if not ticker:
-                return self._generate_demo_quote(symbol)
+            # Qualify contract to populate conId — required by reqTickersAsync
+            async def _qualify_and_tick(c):
+                qualified = await self._wrapper.ib.qualifyContractsAsync(c)
+                if not qualified or qualified[0] is None:
+                    return None
+                # Request delayed market data (type 3 = delayed, free, no subscription needed)
+                self._wrapper.ib.reqMarketDataType(3)
+                tickers = await self._wrapper.ib.reqTickersAsync(qualified[0])
+                if not tickers:
+                    return None
+                ticker = tickers[0]
+                # Wait up to 2 seconds for price data to arrive from TWS
+                import asyncio
+                for _ in range(10):
+                    last_price = getattr(ticker, 'last', 0.0)
+                    bid = getattr(ticker, 'bid', 0.0)
+                    ask = getattr(ticker, 'ask', 0.0)
+                    # Check if we got a valid price (non-NaN and > 0)
+                    if (last_price == last_price and last_price > 0) or \
+                       (bid == bid and bid > 0) or \
+                       (ask == ask and ask > 0):
+                        break
+                    await asyncio.sleep(0.2)
+                return ticker
 
-            t = ticker[0] if isinstance(ticker, list) else ticker
-            bid   = float(t.bid)   if t.bid   and t.bid   > 0 else 0.0
-            ask   = float(t.ask)   if t.ask   and t.ask   > 0 else 0.0
-            last  = float(t.last)  if t.last  and t.last  > 0 else (ask or bid or 0.0)
-            vol   = int(t.volume)  if t.volume else 0
-            close = float(t.close) if t.close and t.close > 0 else last
+            t = self._wrapper.run_async(_qualify_and_tick(contract), timeout=15)
+            if not t:
+                return self._generate_demo_quote(symbol)
+            # Guard against NaN values returned when market data subscription is missing
+            def _safe_float(val):
+                try:
+                    f = float(val)
+                    return f if f == f else 0.0  # NaN check
+                except (TypeError, ValueError):
+                    return 0.0
+
+            bid   = _safe_float(t.bid)   if _safe_float(t.bid)   > 0 else 0.0
+            ask   = _safe_float(t.ask)   if _safe_float(t.ask)   > 0 else 0.0
+            last  = _safe_float(t.last)  if _safe_float(t.last)  > 0 else (ask or bid or 0.0)
+            vol   = int(_safe_float(t.volume)) if t.volume else 0
+            close = _safe_float(t.close) if _safe_float(t.close) > 0 else last
             change     = round(last - close, 4) if close else 0.0
             change_pct = round(change / close * 100, 4) if close else 0.0
+
+            if last <= 0:
+                logger.info("[IBKRClient] get_quote(%s): got zero/NaN price from TWS — attempting Yahoo Finance fallback...", symbol)
+                yf_quote = self._get_yahoo_quote_fallback(symbol)
+                if yf_quote:
+                    return yf_quote
+                logger.warning("[IBKRClient] get_quote(%s): Yahoo Finance fallback failed, using demo fallback", symbol)
+                return self._generate_demo_quote(symbol)
 
             return StockQuote(
                 symbol=symbol,
@@ -378,7 +458,45 @@ class IBKRClient:
             )
         except Exception as e:
             logger.warning("[IBKRClient] get_quote(%s) failed: %s", symbol, e)
+            logger.info("[IBKRClient] get_quote(%s): attempting Yahoo Finance fallback after error...", symbol)
+            yf_quote = self._get_yahoo_quote_fallback(symbol)
+            if yf_quote:
+                return yf_quote
             return self._generate_demo_quote(symbol)
+
+    def _get_yahoo_quote_fallback(self, symbol: str) -> Optional[StockQuote]:
+        import urllib.request
+        import json
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                data = json.loads(response.read().decode())
+                if not data.get('chart', {}).get('result'):
+                    return None
+                meta = data['chart']['result'][0]['meta']
+                last_price = meta.get('regularMarketPrice')
+                if not last_price or last_price <= 0:
+                    return None
+                prev_close = meta.get('chartPreviousClose', last_price)
+                change = last_price - prev_close
+                change_pct = (change / prev_close * 100) if prev_close else 0.0
+                volume = meta.get('regularMarketVolume', 0)
+                
+                logger.info("[IBKRClient] Yahoo Finance fallback successful for %s: $%.2f", symbol, last_price)
+                return StockQuote(
+                    symbol=symbol,
+                    timestamp=datetime.now(),
+                    bid=last_price,
+                    ask=last_price,
+                    last=last_price,
+                    volume=int(volume or 0),
+                    change=round(change, 4),
+                    change_pct=round(change_pct, 4)
+                )
+        except Exception as e:
+            logger.warning("[IBKRClient] Yahoo Finance fallback query failed for %s: %s", symbol, e)
+            return None
 
     # ------------------------------------------------------------------
     # Order execution
@@ -409,9 +527,9 @@ class IBKRClient:
             contract = self._make_contract(symbol)
             action = "BUY" if side.lower() == "buy" else "SELL"
             order = MarketOrder(action, qty_int)
-            trade = self._wrapper.run_async(
-                self._wrapper.ib.placeOrderAsync(contract, order), timeout=30
-            )
+            async def _place():
+                return self._wrapper.ib.placeOrder(contract, order)
+            trade = self._wrapper.run_async(_place(), timeout=30)
             time.sleep(1.5)  # brief wait for fill
 
             fill_price = None
@@ -440,9 +558,9 @@ class IBKRClient:
 
         try:
             from ib_async import MarketOrder
-            positions = self._wrapper.run_async(
-                self._wrapper.ib.reqPositionsAsync(), timeout=15
-            )
+            async def _req_positions():
+                return await self._wrapper.ib.reqPositionsAsync()
+            positions = self._wrapper.run_async(_req_positions(), timeout=15)
             pos_qty = 0.0
             for p in (positions or []):
                 if p.contract.symbol == symbol:
@@ -456,9 +574,9 @@ class IBKRClient:
             qty_int = max(1, math.floor(abs(pos_qty)))
             contract = self._make_contract(symbol)
             order = MarketOrder(action, qty_int)
-            trade = self._wrapper.run_async(
-                self._wrapper.ib.placeOrderAsync(contract, order), timeout=30
-            )
+            async def _place():
+                return self._wrapper.ib.placeOrder(contract, order)
+            trade = self._wrapper.run_async(_place(), timeout=30)
             time.sleep(1.5)
 
             fill_price = None
@@ -483,34 +601,66 @@ class IBKRClient:
                 "long_market_value": "0", "status": "ACTIVE",
             }
         try:
-            account_values = self._wrapper.run_async(
-                self._wrapper.ib.reqAccountSummaryAsync(
-                    group="All",
-                    tags="TotalCashValue,NetLiquidation,BuyingPower,GrossPositionValue"
-                ),
-                timeout=15,
-            )
-            result = {}
-            for av in (account_values or []):
+            # PRIMARY: $LEDGER tags with currency=USD give exact USD balances.
+            # These are the correct source for USD position sizing.
+            # $LEDGER-CashBalance        = USD cash available
+            # $LEDGER-NetLiquidationByCurrency = total USD equity
+            # $LEDGER-StockMarketValue   = USD value of stock positions
+            cash = 0.0
+            net_liq = 0.0
+            stock_market_value = 0.0
+
+            for av in self._wrapper.ib.accountValues():
                 if av.currency != "USD":
                     continue
-                if av.tag == "TotalCashValue":
-                    result["cash"] = av.value
-                    result.setdefault("buying_power", av.value)
-                elif av.tag == "NetLiquidation":
-                    result["equity"] = av.value
-                    result["portfolio_value"] = av.value
-                elif av.tag == "BuyingPower":
-                    result["buying_power"] = av.value
-                elif av.tag == "GrossPositionValue":
-                    result["long_market_value"] = av.value
-            result.setdefault("cash", "0")
-            result.setdefault("buying_power", "0")
-            result.setdefault("equity", "0")
-            result.setdefault("portfolio_value", "0")
-            result.setdefault("long_market_value", "0")
-            result["status"] = "ACTIVE"
-            return result
+                if av.tag == "$LEDGER-CashBalance" or av.tag == "$LEDGER-TotalCashBalance":
+                    try:
+                        v = float(av.value)
+                        if v != 0:
+                            cash = v
+                    except (ValueError, TypeError):
+                        pass
+                elif av.tag == "$LEDGER-NetLiquidationByCurrency":
+                    try:
+                        v = float(av.value)
+                        if v != 0:
+                            net_liq = v
+                    except (ValueError, TypeError):
+                        pass
+                elif av.tag == "$LEDGER-StockMarketValue":
+                    try:
+                        v = float(av.value)
+                        if v != 0:
+                            stock_market_value = v
+                    except (ValueError, TypeError):
+                        pass
+
+            # FALLBACK: sum portfolio() market values (always in USD for US stocks)
+            if stock_market_value == 0:
+                stock_market_value = sum(
+                    float(p.marketValue) for p in self._wrapper.ib.portfolio()
+                    if p.marketValue and str(p.marketValue) not in ("nan", "0", "")
+                    and getattr(p.contract, "currency", "USD") == "USD"
+                )
+
+            # Equity = net liquidation if available, else cash + positions
+            equity = net_liq if net_liq > 0 else (cash + stock_market_value)
+            # Buying power ≈ 4x cash for margin accounts; use cash as conservative estimate
+            buying_power = cash
+
+            logger.debug(
+                "[IBKRClient] get_account (USD): cash=%.2f net_liq=%.2f stock_mv=%.2f",
+                cash, net_liq, stock_market_value
+            )
+
+            return {
+                "cash": str(cash),
+                "buying_power": str(buying_power),
+                "equity": str(equity),
+                "portfolio_value": str(equity),
+                "long_market_value": str(stock_market_value),
+                "status": "ACTIVE",
+            }
         except Exception as e:
             logger.error("[IBKRClient] get_account() failed: %s", e)
             return {}
@@ -519,11 +669,16 @@ class IBKRClient:
         if self.demo_mode or not self._ensure_connected():
             return []
         try:
-            positions = self._wrapper.run_async(
-                self._wrapper.ib.reqPositionsAsync(), timeout=15
-            )
+            async def _req_positions():
+                return await self._wrapper.ib.reqPositionsAsync()
+            positions = self._wrapper.run_async(_req_positions(), timeout=15)
             result = []
             for p in (positions or []):
+                # Only process US equity (Stock) positions — skip Forex, Futures, Options etc.
+                contract_type = getattr(p.contract, 'secType', '') or type(p.contract).__name__
+                if contract_type not in ('STK', 'Stock', ''):
+                    logger.debug("[IBKRClient] Skipping non-equity position: %s (%s)", p.contract.symbol, contract_type)
+                    continue
                 sym = p.contract.symbol
                 qty = float(p.position)
                 avg_cost = float(p.avgCost)
@@ -614,7 +769,9 @@ class IBKRClient:
     # ------------------------------------------------------------------
 
     def _generate_demo_data(self, symbol: str, days: int) -> pd.DataFrame:
-        np.random.seed((hash(symbol) + int(datetime.now().strftime("%Y%m%d"))) % 2147483647)
+        import zlib
+        symbol_seed = zlib.adler32(symbol.encode('utf-8'))
+        np.random.seed((symbol_seed + int(datetime.now().strftime("%Y%m%d"))) % 2147483647)
         dates = pd.date_range(end=datetime.now(), periods=days, freq="D")
         base_prices = {
             'AAPL': 222, 'MSFT': 380, 'AMZN': 210, 'GOOGL': 175, 'GOOG': 175,

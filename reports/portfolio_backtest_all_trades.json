@@ -1,0 +1,1956 @@
+{
+  "timeframe": "1Hour",
+  "days": 365,
+  "metrics": {
+    "initial_value": 100000.0,
+    "final_equity": 111843.46918721017,
+    "total_return_pct": 11.843469187210175,
+    "total_pnl": 11843.469187210168,
+    "win_rate": 68.04123711340206,
+    "total_trades": 194,
+    "winning_trades": 132,
+    "max_drawdown_pct": -2.802307839439992
+  },
+  "trades": [
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-07-25 09:30",
+      "exit_time": "2025-07-30 14:00",
+      "entry_price": 24.77,
+      "exit_price": 24.01,
+      "pnl_dollars": -306.81,
+      "pnl_pct": -3.07,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2025-07-24 09:30",
+      "exit_time": "2025-08-01 10:00",
+      "entry_price": 938.68,
+      "exit_price": 949.52,
+      "pnl_dollars": 115.48,
+      "pnl_pct": 1.15,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2025-07-28 09:30",
+      "exit_time": "2025-08-04 13:00",
+      "entry_price": 166.18,
+      "exit_price": 169.47,
+      "pnl_dollars": 197.59,
+      "pnl_pct": 1.98,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "GOOGL",
+      "entry_time": "2025-08-01 10:00",
+      "exit_time": "2025-08-05 09:30",
+      "entry_price": 188.75,
+      "exit_price": 197.06,
+      "pnl_dollars": 436.75,
+      "pnl_pct": 4.4,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "DIS",
+      "entry_time": "2025-07-25 11:00",
+      "exit_time": "2025-08-05 13:00",
+      "entry_price": 120.99,
+      "exit_price": 119.2,
+      "pnl_dollars": -147.84,
+      "pnl_pct": -1.48,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "AAPL",
+      "entry_time": "2025-07-30 14:00",
+      "exit_time": "2025-08-06 11:00",
+      "entry_price": 208.35,
+      "exit_price": 214.63,
+      "pnl_dollars": 300.12,
+      "pnl_pct": 3.01,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-08-07 10:00",
+      "exit_time": "2025-08-08 15:00",
+      "entry_price": 24.05,
+      "exit_price": 24.58,
+      "pnl_dollars": 221.94,
+      "pnl_pct": 2.2,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2025-08-06 09:30",
+      "exit_time": "2025-08-12 15:00",
+      "entry_price": 526.49,
+      "exit_price": 529.39,
+      "pnl_dollars": 55.53,
+      "pnl_pct": 0.55,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "AMZN",
+      "entry_time": "2025-08-11 09:30",
+      "exit_time": "2025-08-14 09:30",
+      "entry_price": 221.0,
+      "exit_price": 230.19,
+      "pnl_dollars": 420.3,
+      "pnl_pct": 4.16,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2025-08-04 13:00",
+      "exit_time": "2025-08-15 12:00",
+      "entry_price": 150.0,
+      "exit_price": 157.52,
+      "pnl_dollars": 500.88,
+      "pnl_pct": 5.01,
+      "reason": "Take Profit"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2025-08-13 10:00",
+      "exit_time": "2025-08-19 09:30",
+      "entry_price": 101.77,
+      "exit_price": 102.11,
+      "pnl_dollars": 33.8,
+      "pnl_pct": 0.33,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2025-08-05 15:00",
+      "exit_time": "2025-08-20 09:30",
+      "entry_price": 107.19,
+      "exit_price": 108.83,
+      "pnl_dollars": 153.35,
+      "pnl_pct": 1.53,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "KO",
+      "entry_time": "2025-08-14 13:00",
+      "exit_time": "2025-08-20 14:00",
+      "entry_price": 69.55,
+      "exit_price": 70.75,
+      "pnl_dollars": 175.17,
+      "pnl_pct": 1.73,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2025-08-20 09:30",
+      "exit_time": "2025-08-21 13:00",
+      "entry_price": 152.69,
+      "exit_price": 155.27,
+      "pnl_dollars": 172.13,
+      "pnl_pct": 1.69,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_time": "2025-08-18 09:30",
+      "exit_time": "2025-08-22 10:00",
+      "entry_price": 575.95,
+      "exit_price": 572.88,
+      "pnl_dollars": -54.17,
+      "pnl_pct": -0.53,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "SPY",
+      "entry_time": "2025-08-20 14:00",
+      "exit_time": "2025-08-22 10:00",
+      "entry_price": 636.69,
+      "exit_price": 645.65,
+      "pnl_dollars": 143.24,
+      "pnl_pct": 1.41,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2025-08-21 13:00",
+      "exit_time": "2025-08-22 15:00",
+      "entry_price": 397.25,
+      "exit_price": 412.89,
+      "pnl_dollars": 401.3,
+      "pnl_pct": 3.94,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2025-08-22 15:00",
+      "exit_time": "2025-08-28 09:30",
+      "entry_price": 958.53,
+      "exit_price": 947.16,
+      "pnl_dollars": -121.66,
+      "pnl_pct": -1.19,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2025-08-19 09:30",
+      "exit_time": "2025-08-28 12:00",
+      "entry_price": 513.55,
+      "exit_price": 507.83,
+      "pnl_dollars": -113.3,
+      "pnl_pct": -1.11,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-08-25 11:00",
+      "exit_time": "2025-08-28 12:00",
+      "entry_price": 25.33,
+      "exit_price": 24.54,
+      "pnl_dollars": -319.43,
+      "pnl_pct": -3.12,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2025-08-22 10:00",
+      "exit_time": "2025-09-03 09:30",
+      "entry_price": 98.06,
+      "exit_price": 97.96,
+      "pnl_dollars": -10.48,
+      "pnl_pct": -0.1,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2025-08-29 10:00",
+      "exit_time": "2025-09-04 09:30",
+      "entry_price": 738.5,
+      "exit_price": 748.58,
+      "pnl_dollars": 139.35,
+      "pnl_pct": 1.36,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2025-08-29 11:00",
+      "exit_time": "2025-09-04 09:30",
+      "entry_price": 941.22,
+      "exit_price": 956.37,
+      "pnl_dollars": 164.33,
+      "pnl_pct": 1.61,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_time": "2025-09-02 09:30",
+      "exit_time": "2025-09-04 11:00",
+      "entry_price": 564.59,
+      "exit_price": 572.12,
+      "pnl_dollars": 136.07,
+      "pnl_pct": 1.33,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2025-09-03 09:30",
+      "exit_time": "2025-09-05 13:00",
+      "entry_price": 112.8,
+      "exit_price": 109.33,
+      "pnl_dollars": -314.57,
+      "pnl_pct": -3.08,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2025-09-05 10:00",
+      "exit_time": "2025-09-12 10:00",
+      "entry_price": 495.31,
+      "exit_price": 509.07,
+      "pnl_dollars": 284.13,
+      "pnl_pct": 2.78,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-09-04 09:30",
+      "exit_time": "2025-09-12 15:00",
+      "entry_price": 24.62,
+      "exit_price": 23.88,
+      "pnl_dollars": -308.32,
+      "pnl_pct": -3.01,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "AMZN",
+      "entry_time": "2025-09-12 10:00",
+      "exit_time": "2025-09-16 11:00",
+      "entry_price": 230.16,
+      "exit_price": 235.26,
+      "pnl_dollars": 227.48,
+      "pnl_pct": 2.22,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "KO",
+      "entry_time": "2025-09-16 11:00",
+      "exit_time": "2025-09-17 11:00",
+      "entry_price": 66.36,
+      "exit_price": 67.0,
+      "pnl_dollars": 99.04,
+      "pnl_pct": 0.96,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2025-09-05 13:00",
+      "exit_time": "2025-09-17 15:00",
+      "entry_price": 340.37,
+      "exit_price": 346.07,
+      "pnl_dollars": 171.08,
+      "pnl_pct": 1.67,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-09-12 15:00",
+      "exit_time": "2025-09-22 09:30",
+      "entry_price": 23.88,
+      "exit_price": 24.77,
+      "pnl_dollars": 380.88,
+      "pnl_pct": 3.73,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2025-09-22 09:30",
+      "exit_time": "2025-09-24 14:00",
+      "entry_price": 583.69,
+      "exit_price": 566.13,
+      "pnl_dollars": -310.21,
+      "pnl_pct": -3.01,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "AAPL",
+      "entry_time": "2025-09-24 14:00",
+      "exit_time": "2025-09-26 12:00",
+      "entry_price": 251.73,
+      "exit_price": 256.34,
+      "pnl_dollars": 188.62,
+      "pnl_pct": 1.83,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2025-09-18 15:00",
+      "exit_time": "2025-09-29 10:00",
+      "entry_price": 174.14,
+      "exit_price": 180.73,
+      "pnl_dollars": 389.99,
+      "pnl_pct": 3.78,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2025-09-04 15:00",
+      "exit_time": "2025-10-03 10:00",
+      "entry_price": 157.72,
+      "exit_price": 152.83,
+      "pnl_dollars": -318.16,
+      "pnl_pct": -3.1,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2025-09-30 09:30",
+      "exit_time": "2025-10-06 12:00",
+      "entry_price": 113.33,
+      "exit_price": 114.37,
+      "pnl_dollars": 94.53,
+      "pnl_pct": 0.92,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2025-09-17 15:00",
+      "exit_time": "2025-10-09 09:30",
+      "entry_price": 416.89,
+      "exit_price": 380.75,
+      "pnl_dollars": -893.56,
+      "pnl_pct": -8.67,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2025-09-26 12:00",
+      "exit_time": "2025-10-09 09:30",
+      "entry_price": 918.88,
+      "exit_price": 933.63,
+      "pnl_dollars": 166.07,
+      "pnl_pct": 1.61,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-10-07 09:30",
+      "exit_time": "2025-10-09 10:00",
+      "entry_price": 26.38,
+      "exit_price": 25.39,
+      "pnl_dollars": -383.96,
+      "pnl_pct": -3.75,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2025-10-06 09:30",
+      "exit_time": "2025-10-10 15:00",
+      "entry_price": 153.87,
+      "exit_price": 148.94,
+      "pnl_dollars": -328.08,
+      "pnl_pct": -3.2,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2025-10-09 10:00",
+      "exit_time": "2025-10-14 13:00",
+      "entry_price": 573.73,
+      "exit_price": 569.22,
+      "pnl_dollars": -80.16,
+      "pnl_pct": -0.79,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2025-10-09 09:30",
+      "exit_time": "2025-10-14 14:00",
+      "entry_price": 49.77,
+      "exit_price": 50.3,
+      "pnl_dollars": 108.85,
+      "pnl_pct": 1.06,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "GOOGL",
+      "entry_time": "2025-10-09 09:30",
+      "exit_time": "2025-10-15 10:00",
+      "entry_price": 242.81,
+      "exit_price": 250.54,
+      "pnl_dollars": 325.42,
+      "pnl_pct": 3.18,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2025-10-16 11:00",
+      "exit_time": "2025-10-20 14:00",
+      "entry_price": 338.81,
+      "exit_price": 343.85,
+      "pnl_dollars": 152.09,
+      "pnl_pct": 1.49,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2025-10-16 13:00",
+      "exit_time": "2025-10-20 14:00",
+      "entry_price": 551.28,
+      "exit_price": 565.44,
+      "pnl_dollars": 262.35,
+      "pnl_pct": 2.57,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2025-10-10 15:00",
+      "exit_time": "2025-10-21 09:30",
+      "entry_price": 511.38,
+      "exit_price": 517.88,
+      "pnl_dollars": 128.45,
+      "pnl_pct": 1.27,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2025-10-16 13:00",
+      "exit_time": "2025-10-23 09:30",
+      "entry_price": 110.78,
+      "exit_price": 116.03,
+      "pnl_dollars": 484.05,
+      "pnl_pct": 4.74,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2025-10-22 10:00",
+      "exit_time": "2025-10-24 10:00",
+      "entry_price": 50.9,
+      "exit_price": 52.53,
+      "pnl_dollars": 330.05,
+      "pnl_pct": 3.2,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JPM",
+      "entry_time": "2025-10-22 10:00",
+      "exit_time": "2025-10-24 11:00",
+      "entry_price": 294.29,
+      "exit_price": 302.2,
+      "pnl_dollars": 277.02,
+      "pnl_pct": 2.69,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2025-10-24 11:00",
+      "exit_time": "2025-10-31 11:00",
+      "entry_price": 190.36,
+      "exit_price": 188.51,
+      "pnl_dollars": -100.97,
+      "pnl_pct": -0.97,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2025-10-31 11:00",
+      "exit_time": "2025-11-10 15:00",
+      "entry_price": 516.65,
+      "exit_price": 506.15,
+      "pnl_dollars": -209.74,
+      "pnl_pct": -2.03,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2025-10-21 13:00",
+      "exit_time": "2025-11-12 11:00",
+      "entry_price": 106.63,
+      "exit_price": 103.18,
+      "pnl_dollars": -333.01,
+      "pnl_pct": -3.24,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2025-10-27 14:00",
+      "exit_time": "2025-11-14 14:00",
+      "entry_price": 155.48,
+      "exit_price": 157.9,
+      "pnl_dollars": 161.32,
+      "pnl_pct": 1.56,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "GOOGL",
+      "entry_time": "2025-11-13 09:30",
+      "exit_time": "2025-11-17 09:30",
+      "entry_price": 279.01,
+      "exit_price": 292.6,
+      "pnl_dollars": 501.09,
+      "pnl_pct": 4.87,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2025-10-23 10:00",
+      "exit_time": "2025-11-18 09:30",
+      "entry_price": 384.38,
+      "exit_price": 346.52,
+      "pnl_dollars": -1017.89,
+      "pnl_pct": -9.85,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "JPM",
+      "entry_time": "2025-11-14 14:00",
+      "exit_time": "2025-11-20 09:30",
+      "entry_price": 305.4,
+      "exit_price": 308.8,
+      "pnl_dollars": 114.37,
+      "pnl_pct": 1.11,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2025-11-12 11:00",
+      "exit_time": "2025-11-24 11:00",
+      "entry_price": 610.97,
+      "exit_price": 611.63,
+      "pnl_dollars": 11.09,
+      "pnl_pct": 0.11,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-11-20 09:30",
+      "exit_time": "2025-11-24 12:00",
+      "entry_price": 24.72,
+      "exit_price": 25.37,
+      "pnl_dollars": 270.65,
+      "pnl_pct": 2.63,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2025-11-17 09:30",
+      "exit_time": "2025-11-24 15:00",
+      "entry_price": 52.23,
+      "exit_price": 51.91,
+      "pnl_dollars": -63.19,
+      "pnl_pct": -0.61,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2025-11-24 15:00",
+      "exit_time": "2025-11-26 09:30",
+      "entry_price": 104.08,
+      "exit_price": 107.95,
+      "pnl_dollars": 382.97,
+      "pnl_pct": 3.72,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2025-11-25 11:00",
+      "exit_time": "2025-12-04 09:30",
+      "entry_price": 114.96,
+      "exit_price": 117.84,
+      "pnl_dollars": 258.34,
+      "pnl_pct": 2.51,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-12-01 13:00",
+      "exit_time": "2025-12-08 12:00",
+      "entry_price": 25.33,
+      "exit_price": 26.18,
+      "pnl_dollars": 348.29,
+      "pnl_pct": 3.36,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2025-12-01 15:00",
+      "exit_time": "2025-12-11 09:30",
+      "entry_price": 330.62,
+      "exit_price": 335.82,
+      "pnl_dollars": 163.11,
+      "pnl_pct": 1.57,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2025-11-18 09:30",
+      "exit_time": "2025-12-16 09:30",
+      "entry_price": 152.19,
+      "exit_price": 147.45,
+      "pnl_dollars": -317.82,
+      "pnl_pct": -3.11,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "AMZN",
+      "entry_time": "2025-12-04 09:30",
+      "exit_time": "2025-12-19 14:00",
+      "entry_price": 228.93,
+      "exit_price": 228.91,
+      "pnl_dollars": -0.91,
+      "pnl_pct": -0.01,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2025-12-15 09:30",
+      "exit_time": "2025-12-23 12:00",
+      "entry_price": 117.72,
+      "exit_price": 119.41,
+      "pnl_dollars": 149.03,
+      "pnl_pct": 1.44,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2025-12-16 09:30",
+      "exit_time": "2025-12-23 13:00",
+      "entry_price": 147.45,
+      "exit_price": 150.83,
+      "pnl_dollars": 237.06,
+      "pnl_pct": 2.29,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "AAPL",
+      "entry_time": "2025-12-08 12:00",
+      "exit_time": "2025-12-26 09:30",
+      "entry_price": 277.33,
+      "exit_price": 274.46,
+      "pnl_dollars": -107.3,
+      "pnl_pct": -1.03,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2025-12-19 14:00",
+      "exit_time": "2025-12-29 09:30",
+      "entry_price": 208.26,
+      "exit_price": 209.13,
+      "pnl_dollars": 43.32,
+      "pnl_pct": 0.42,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2025-12-24 09:30",
+      "exit_time": "2025-12-29 10:00",
+      "entry_price": 111.08,
+      "exit_price": 112.41,
+      "pnl_dollars": 124.72,
+      "pnl_pct": 1.2,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JPM",
+      "entry_time": "2025-12-29 13:00",
+      "exit_time": "2026-01-05 09:30",
+      "entry_price": 324.33,
+      "exit_price": 334.5,
+      "pnl_dollars": 327.58,
+      "pnl_pct": 3.14,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2025-12-29 13:00",
+      "exit_time": "2026-01-05 09:30",
+      "entry_price": 55.43,
+      "exit_price": 57.16,
+      "pnl_dollars": 326.05,
+      "pnl_pct": 3.12,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2025-12-23 12:00",
+      "exit_time": "2026-01-06 09:30",
+      "entry_price": 25.03,
+      "exit_price": 25.74,
+      "pnl_dollars": 295.02,
+      "pnl_pct": 2.84,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2026-01-05 09:30",
+      "exit_time": "2026-01-07 09:30",
+      "entry_price": 472.54,
+      "exit_price": 483.62,
+      "pnl_dollars": 246.75,
+      "pnl_pct": 2.34,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-01-05 09:30",
+      "exit_time": "2026-01-07 09:30",
+      "entry_price": 201.71,
+      "exit_price": 207.91,
+      "pnl_dollars": 323.46,
+      "pnl_pct": 3.07,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "KO",
+      "entry_time": "2026-01-06 09:30",
+      "exit_time": "2026-01-08 10:00",
+      "entry_price": 67.9,
+      "exit_price": 69.03,
+      "pnl_dollars": 175.76,
+      "pnl_pct": 1.66,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JPM",
+      "entry_time": "2026-01-07 10:00",
+      "exit_time": "2026-01-09 10:00",
+      "entry_price": 325.57,
+      "exit_price": 331.29,
+      "pnl_dollars": 185.92,
+      "pnl_pct": 1.76,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2026-01-07 09:30",
+      "exit_time": "2026-01-09 12:00",
+      "entry_price": 119.59,
+      "exit_price": 123.87,
+      "pnl_dollars": 378.83,
+      "pnl_pct": 3.58,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2026-01-08 15:00",
+      "exit_time": "2026-01-12 09:30",
+      "entry_price": 352.21,
+      "exit_price": 340.38,
+      "pnl_dollars": -357.4,
+      "pnl_pct": -3.36,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-01-09 15:00",
+      "exit_time": "2026-01-13 10:00",
+      "entry_price": 204.37,
+      "exit_price": 212.64,
+      "pnl_dollars": 431.77,
+      "pnl_pct": 4.05,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2026-01-12 09:30",
+      "exit_time": "2026-01-13 10:00",
+      "entry_price": 560.19,
+      "exit_price": 535.89,
+      "pnl_dollars": -461.74,
+      "pnl_pct": -4.34,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2025-12-29 11:00",
+      "exit_time": "2026-01-14 09:30",
+      "entry_price": 655.96,
+      "exit_price": 621.08,
+      "pnl_dollars": -555.33,
+      "pnl_pct": -5.32,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2026-01-13 10:00",
+      "exit_time": "2026-01-14 09:30",
+      "entry_price": 55.01,
+      "exit_price": 52.23,
+      "pnl_dollars": -534.3,
+      "pnl_pct": -5.05,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "SPY",
+      "entry_time": "2026-01-14 10:00",
+      "exit_time": "2026-01-16 11:00",
+      "entry_price": 687.16,
+      "exit_price": 692.67,
+      "pnl_dollars": 84.17,
+      "pnl_pct": 0.8,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2026-01-09 10:00",
+      "exit_time": "2026-01-21 11:00",
+      "entry_price": 473.95,
+      "exit_price": 443.95,
+      "pnl_dollars": -674.31,
+      "pnl_pct": -6.33,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "DIS",
+      "entry_time": "2026-01-13 11:00",
+      "exit_time": "2026-01-22 09:30",
+      "entry_price": 111.73,
+      "exit_price": 113.65,
+      "pnl_dollars": 181.76,
+      "pnl_pct": 1.72,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "SPY",
+      "entry_time": "2026-01-21 11:00",
+      "exit_time": "2026-01-22 13:00",
+      "entry_price": 680.05,
+      "exit_price": 690.02,
+      "pnl_dollars": 152.81,
+      "pnl_pct": 1.47,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "AMZN",
+      "entry_time": "2026-01-14 09:30",
+      "exit_time": "2026-01-23 11:00",
+      "entry_price": 238.67,
+      "exit_price": 240.05,
+      "pnl_dollars": 60.79,
+      "pnl_pct": 0.58,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "KO",
+      "entry_time": "2026-01-16 11:00",
+      "exit_time": "2026-01-26 09:30",
+      "entry_price": 70.47,
+      "exit_price": 73.03,
+      "pnl_dollars": 381.44,
+      "pnl_pct": 3.63,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2026-01-26 09:30",
+      "exit_time": "2026-01-27 09:30",
+      "entry_price": 25.68,
+      "exit_price": 26.23,
+      "pnl_dollars": 225.76,
+      "pnl_pct": 2.14,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JPM",
+      "entry_time": "2026-01-26 11:00",
+      "exit_time": "2026-01-29 09:30",
+      "entry_price": 299.89,
+      "exit_price": 304.06,
+      "pnl_dollars": 146.68,
+      "pnl_pct": 1.39,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2026-01-28 12:00",
+      "exit_time": "2026-01-30 09:30",
+      "entry_price": 51.53,
+      "exit_price": 53.2,
+      "pnl_dollars": 342.0,
+      "pnl_pct": 3.24,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "DIS",
+      "entry_time": "2026-01-26 10:00",
+      "exit_time": "2026-01-30 11:00",
+      "entry_price": 111.53,
+      "exit_price": 111.89,
+      "pnl_dollars": 34.02,
+      "pnl_pct": 0.32,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2026-01-27 10:00",
+      "exit_time": "2026-01-30 14:00",
+      "entry_price": 115.93,
+      "exit_price": 119.07,
+      "pnl_dollars": 285.87,
+      "pnl_pct": 2.71,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "AAPL",
+      "entry_time": "2026-01-29 09:30",
+      "exit_time": "2026-02-02 11:00",
+      "entry_price": 256.8,
+      "exit_price": 264.47,
+      "pnl_dollars": 316.13,
+      "pnl_pct": 2.99,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2026-01-30 11:00",
+      "exit_time": "2026-02-02 14:00",
+      "entry_price": 369.68,
+      "exit_price": 379.21,
+      "pnl_dollars": 274.09,
+      "pnl_pct": 2.58,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2026-01-30 15:00",
+      "exit_time": "2026-02-03 09:30",
+      "entry_price": 940.26,
+      "exit_price": 979.62,
+      "pnl_dollars": 446.44,
+      "pnl_pct": 4.19,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2026-02-02 12:00",
+      "exit_time": "2026-02-04 12:00",
+      "entry_price": 707.27,
+      "exit_price": 669.96,
+      "pnl_dollars": -565.63,
+      "pnl_pct": -5.28,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2026-02-03 13:00",
+      "exit_time": "2026-02-05 09:30",
+      "entry_price": 25.71,
+      "exit_price": 26.99,
+      "pnl_dollars": 533.67,
+      "pnl_pct": 4.98,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "SPY",
+      "entry_time": "2026-02-04 11:00",
+      "exit_time": "2026-02-09 09:30",
+      "entry_price": 686.59,
+      "exit_price": 690.4,
+      "pnl_dollars": 59.55,
+      "pnl_pct": 0.55,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_time": "2026-02-03 13:00",
+      "exit_time": "2026-02-09 10:00",
+      "entry_price": 611.61,
+      "exit_price": 613.65,
+      "pnl_dollars": 35.75,
+      "pnl_pct": 0.33,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "GOOGL",
+      "entry_time": "2026-02-04 12:00",
+      "exit_time": "2026-02-11 10:00",
+      "entry_price": 331.43,
+      "exit_price": 312.48,
+      "pnl_dollars": -612.63,
+      "pnl_pct": -5.72,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "AAPL",
+      "entry_time": "2026-02-10 09:30",
+      "exit_time": "2026-02-11 10:00",
+      "entry_price": 274.76,
+      "exit_price": 279.75,
+      "pnl_dollars": 194.63,
+      "pnl_pct": 1.82,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "KO",
+      "entry_time": "2026-02-10 09:30",
+      "exit_time": "2026-02-12 09:30",
+      "entry_price": 77.29,
+      "exit_price": 79.6,
+      "pnl_dollars": 320.29,
+      "pnl_pct": 2.99,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2026-02-11 10:00",
+      "exit_time": "2026-02-12 14:00",
+      "entry_price": 978.17,
+      "exit_price": 1008.68,
+      "pnl_dollars": 334.08,
+      "pnl_pct": 3.12,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2026-02-06 12:00",
+      "exit_time": "2026-02-13 09:30",
+      "entry_price": 540.9,
+      "exit_price": 523.69,
+      "pnl_dollars": -341.08,
+      "pnl_pct": -3.18,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2026-02-13 09:30",
+      "exit_time": "2026-02-19 09:30",
+      "entry_price": 149.84,
+      "exit_price": 151.93,
+      "pnl_dollars": 149.39,
+      "pnl_pct": 1.39,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2026-02-11 12:00",
+      "exit_time": "2026-02-20 10:00",
+      "entry_price": 660.47,
+      "exit_price": 661.26,
+      "pnl_dollars": 12.85,
+      "pnl_pct": 0.12,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2026-02-19 09:30",
+      "exit_time": "2026-02-24 09:30",
+      "entry_price": 26.92,
+      "exit_price": 27.37,
+      "pnl_dollars": 179.34,
+      "pnl_pct": 1.67,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2026-02-12 09:30",
+      "exit_time": "2026-02-25 10:00",
+      "entry_price": 401.5,
+      "exit_price": 398.8,
+      "pnl_dollars": -72.35,
+      "pnl_pct": -0.67,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "SPY",
+      "entry_time": "2026-02-12 14:00",
+      "exit_time": "2026-02-25 10:00",
+      "entry_price": 685.16,
+      "exit_price": 690.84,
+      "pnl_dollars": 89.19,
+      "pnl_pct": 0.83,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2026-02-20 10:00",
+      "exit_time": "2026-02-25 11:00",
+      "entry_price": 983.33,
+      "exit_price": 994.2,
+      "pnl_dollars": 118.73,
+      "pnl_pct": 1.11,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2026-02-24 09:30",
+      "exit_time": "2026-02-26 09:30",
+      "entry_price": 630.89,
+      "exit_price": 658.66,
+      "pnl_dollars": 472.76,
+      "pnl_pct": 4.4,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2026-02-25 10:00",
+      "exit_time": "2026-03-02 09:30",
+      "entry_price": 147.72,
+      "exit_price": 155.53,
+      "pnl_dollars": 572.08,
+      "pnl_pct": 5.29,
+      "reason": "Take Profit"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-02-26 09:30",
+      "exit_time": "2026-03-02 09:30",
+      "entry_price": 243.75,
+      "exit_price": 249.58,
+      "pnl_dollars": 259.23,
+      "pnl_pct": 2.39,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2026-02-26 10:00",
+      "exit_time": "2026-03-02 10:00",
+      "entry_price": 124.67,
+      "exit_price": 127.74,
+      "pnl_dollars": 267.15,
+      "pnl_pct": 2.46,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_time": "2026-02-27 09:30",
+      "exit_time": "2026-03-05 09:30",
+      "entry_price": 604.55,
+      "exit_price": 612.24,
+      "pnl_dollars": 138.27,
+      "pnl_pct": 1.27,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2026-03-02 10:00",
+      "exit_time": "2026-03-06 09:30",
+      "entry_price": 50.0,
+      "exit_price": 47.75,
+      "pnl_dollars": -492.71,
+      "pnl_pct": -4.5,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-03-05 09:30",
+      "exit_time": "2026-03-10 09:30",
+      "entry_price": 239.53,
+      "exit_price": 241.99,
+      "pnl_dollars": 112.21,
+      "pnl_pct": 1.03,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "KO",
+      "entry_time": "2026-03-03 09:30",
+      "exit_time": "2026-03-10 11:00",
+      "entry_price": 79.21,
+      "exit_price": 78.13,
+      "pnl_dollars": -148.68,
+      "pnl_pct": -1.36,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2026-03-06 09:30",
+      "exit_time": "2026-03-11 09:30",
+      "entry_price": 640.49,
+      "exit_price": 657.28,
+      "pnl_dollars": 283.98,
+      "pnl_pct": 2.62,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2026-03-12 10:00",
+      "exit_time": "2026-03-17 09:30",
+      "entry_price": 503.75,
+      "exit_price": 516.17,
+      "pnl_dollars": 268.83,
+      "pnl_pct": 2.47,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "GOOGL",
+      "entry_time": "2026-03-12 10:00",
+      "exit_time": "2026-03-17 12:00",
+      "entry_price": 302.02,
+      "exit_price": 307.76,
+      "pnl_dollars": 207.23,
+      "pnl_pct": 1.9,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2026-03-12 10:00",
+      "exit_time": "2026-03-18 13:00",
+      "entry_price": 310.04,
+      "exit_price": 300.57,
+      "pnl_dollars": -333.05,
+      "pnl_pct": -3.05,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "AAPL",
+      "entry_time": "2026-03-02 09:30",
+      "exit_time": "2026-03-18 14:00",
+      "entry_price": 263.15,
+      "exit_price": 249.88,
+      "pnl_dollars": -551.97,
+      "pnl_pct": -5.04,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2026-03-18 13:00",
+      "exit_time": "2026-03-23 10:00",
+      "entry_price": 300.57,
+      "exit_price": 307.1,
+      "pnl_dollars": 236.84,
+      "pnl_pct": 2.17,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2026-03-18 09:30",
+      "exit_time": "2026-03-24 10:00",
+      "entry_price": 123.35,
+      "exit_price": 123.19,
+      "pnl_dollars": -14.18,
+      "pnl_pct": -0.13,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2026-03-18 14:00",
+      "exit_time": "2026-03-25 11:00",
+      "entry_price": 391.9,
+      "exit_price": 370.42,
+      "pnl_dollars": -596.85,
+      "pnl_pct": -5.48,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-03-18 09:30",
+      "exit_time": "2026-03-25 12:00",
+      "entry_price": 236.52,
+      "exit_price": 241.14,
+      "pnl_dollars": 213.58,
+      "pnl_pct": 1.95,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2026-03-23 10:00",
+      "exit_time": "2026-03-25 12:00",
+      "entry_price": 26.86,
+      "exit_price": 27.46,
+      "pnl_dollars": 242.9,
+      "pnl_pct": 2.23,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JPM",
+      "entry_time": "2026-03-27 09:30",
+      "exit_time": "2026-03-31 13:00",
+      "entry_price": 286.69,
+      "exit_price": 293.51,
+      "pnl_dollars": 258.31,
+      "pnl_pct": 2.38,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "DIS",
+      "entry_time": "2026-03-24 10:00",
+      "exit_time": "2026-03-31 14:00",
+      "entry_price": 97.51,
+      "exit_price": 95.97,
+      "pnl_dollars": -171.51,
+      "pnl_pct": -1.58,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2026-03-27 09:30",
+      "exit_time": "2026-03-31 14:00",
+      "entry_price": 47.68,
+      "exit_price": 48.63,
+      "pnl_dollars": 216.35,
+      "pnl_pct": 1.99,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "SPY",
+      "entry_time": "2026-03-27 09:30",
+      "exit_time": "2026-03-31 14:00",
+      "entry_price": 639.05,
+      "exit_price": 648.64,
+      "pnl_dollars": 162.95,
+      "pnl_pct": 1.5,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2026-03-31 13:00",
+      "exit_time": "2026-04-01 10:00",
+      "entry_price": 204.41,
+      "exit_price": 197.76,
+      "pnl_dollars": -355.93,
+      "pnl_pct": -3.25,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2026-04-01 09:30",
+      "exit_time": "2026-04-07 10:00",
+      "entry_price": 163.84,
+      "exit_price": 165.59,
+      "pnl_dollars": 116.7,
+      "pnl_pct": 1.07,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2026-04-06 14:00",
+      "exit_time": "2026-04-07 10:00",
+      "entry_price": 27.89,
+      "exit_price": 27.05,
+      "pnl_dollars": -328.64,
+      "pnl_pct": -3.01,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2026-04-06 09:30",
+      "exit_time": "2026-04-09 09:30",
+      "entry_price": 321.63,
+      "exit_price": 333.83,
+      "pnl_dollars": 413.27,
+      "pnl_pct": 3.79,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "AAPL",
+      "entry_time": "2026-04-07 10:00",
+      "exit_time": "2026-04-09 10:00",
+      "entry_price": 246.19,
+      "exit_price": 257.65,
+      "pnl_dollars": 506.01,
+      "pnl_pct": 4.65,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-04-06 11:00",
+      "exit_time": "2026-04-09 11:00",
+      "entry_price": 242.38,
+      "exit_price": 242.53,
+      "pnl_dollars": 6.75,
+      "pnl_pct": 0.06,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2026-04-09 10:00",
+      "exit_time": "2026-04-10 09:30",
+      "entry_price": 195.45,
+      "exit_price": 188.73,
+      "pnl_dollars": -378.12,
+      "pnl_pct": -3.44,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2026-04-10 12:00",
+      "exit_time": "2026-04-14 10:00",
+      "entry_price": 498.06,
+      "exit_price": 512.61,
+      "pnl_dollars": 319.83,
+      "pnl_pct": 2.92,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2026-04-10 13:00",
+      "exit_time": "2026-04-16 09:30",
+      "entry_price": 997.85,
+      "exit_price": 992.06,
+      "pnl_dollars": -63.48,
+      "pnl_pct": -0.58,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2026-04-16 15:00",
+      "exit_time": "2026-04-17 10:00",
+      "entry_price": 337.15,
+      "exit_price": 350.12,
+      "pnl_dollars": 422.11,
+      "pnl_pct": 3.85,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2026-04-07 10:00",
+      "exit_time": "2026-04-20 10:00",
+      "entry_price": 27.05,
+      "exit_price": 27.76,
+      "pnl_dollars": 285.32,
+      "pnl_pct": 2.62,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2026-04-14 10:00",
+      "exit_time": "2026-04-20 11:00",
+      "entry_price": 123.95,
+      "exit_price": 128.38,
+      "pnl_dollars": 391.86,
+      "pnl_pct": 3.57,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-04-13 09:30",
+      "exit_time": "2026-04-20 15:00",
+      "entry_price": 238.22,
+      "exit_price": 230.58,
+      "pnl_dollars": -351.08,
+      "pnl_pct": -3.21,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "KO",
+      "entry_time": "2026-04-21 11:00",
+      "exit_time": "2026-04-23 15:00",
+      "entry_price": 74.89,
+      "exit_price": 76.3,
+      "pnl_dollars": 207.54,
+      "pnl_pct": 1.88,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2026-04-23 15:00",
+      "exit_time": "2026-04-27 09:30",
+      "entry_price": 26.66,
+      "exit_price": 27.23,
+      "pnl_dollars": 236.12,
+      "pnl_pct": 2.14,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2026-04-21 10:00",
+      "exit_time": "2026-04-28 10:00",
+      "entry_price": 311.69,
+      "exit_price": 312.71,
+      "pnl_dollars": 36.09,
+      "pnl_pct": 0.33,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2026-04-21 12:00",
+      "exit_time": "2026-04-30 09:30",
+      "entry_price": 670.15,
+      "exit_price": 603.9,
+      "pnl_dollars": -1088.86,
+      "pnl_pct": -9.89,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2026-04-28 11:00",
+      "exit_time": "2026-04-30 13:00",
+      "entry_price": 997.85,
+      "exit_price": 1014.57,
+      "pnl_dollars": 185.97,
+      "pnl_pct": 1.68,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "AAPL",
+      "entry_time": "2026-04-27 09:30",
+      "exit_time": "2026-05-01 09:30",
+      "entry_price": 268.13,
+      "exit_price": 283.95,
+      "pnl_dollars": 653.3,
+      "pnl_pct": 5.9,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2026-05-01 14:00",
+      "exit_time": "2026-05-06 11:00",
+      "entry_price": 329.1,
+      "exit_price": 319.01,
+      "pnl_dollars": -338.7,
+      "pnl_pct": -3.07,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-04-20 15:00",
+      "exit_time": "2026-05-06 12:00",
+      "entry_price": 230.58,
+      "exit_price": 223.22,
+      "pnl_dollars": -352.73,
+      "pnl_pct": -3.19,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2026-05-04 10:00",
+      "exit_time": "2026-05-06 12:00",
+      "entry_price": 320.21,
+      "exit_price": 323.76,
+      "pnl_dollars": 122.54,
+      "pnl_pct": 1.11,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2026-05-06 12:00",
+      "exit_time": "2026-05-11 10:00",
+      "entry_price": 185.28,
+      "exit_price": 184.62,
+      "pnl_dollars": -39.16,
+      "pnl_pct": -0.36,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2026-05-01 10:00",
+      "exit_time": "2026-05-12 09:30",
+      "entry_price": 501.15,
+      "exit_price": 502.66,
+      "pnl_dollars": 33.34,
+      "pnl_pct": 0.3,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2026-05-06 11:00",
+      "exit_time": "2026-05-12 09:30",
+      "entry_price": 319.01,
+      "exit_price": 325.31,
+      "pnl_dollars": 217.24,
+      "pnl_pct": 1.97,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2026-05-06 12:00",
+      "exit_time": "2026-05-12 09:30",
+      "entry_price": 148.47,
+      "exit_price": 150.44,
+      "pnl_dollars": 145.85,
+      "pnl_pct": 1.33,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "GOOGL",
+      "entry_time": "2026-05-12 09:30",
+      "exit_time": "2026-05-13 15:00",
+      "entry_price": 386.61,
+      "exit_price": 402.64,
+      "pnl_dollars": 458.14,
+      "pnl_pct": 4.15,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2026-05-11 10:00",
+      "exit_time": "2026-05-15 09:30",
+      "entry_price": 409.48,
+      "exit_price": 415.32,
+      "pnl_dollars": 157.14,
+      "pnl_pct": 1.43,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MA",
+      "entry_time": "2026-05-14 09:30",
+      "exit_time": "2026-05-18 14:00",
+      "entry_price": 491.16,
+      "exit_price": 502.54,
+      "pnl_dollars": 256.27,
+      "pnl_pct": 2.32,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2026-05-12 09:30",
+      "exit_time": "2026-05-20 14:00",
+      "entry_price": 312.04,
+      "exit_price": 310.52,
+      "pnl_dollars": -53.82,
+      "pnl_pct": -0.49,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_time": "2026-05-18 14:00",
+      "exit_time": "2026-05-26 09:30",
+      "entry_price": 699.56,
+      "exit_price": 728.44,
+      "pnl_dollars": 456.6,
+      "pnl_pct": 4.13,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2026-05-20 14:00",
+      "exit_time": "2026-05-26 10:00",
+      "entry_price": 157.91,
+      "exit_price": 152.18,
+      "pnl_dollars": -404.92,
+      "pnl_pct": -3.63,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2026-05-26 10:00",
+      "exit_time": "2026-05-29 09:30",
+      "entry_price": 187.28,
+      "exit_price": 180.83,
+      "pnl_dollars": -383.18,
+      "pnl_pct": -3.44,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "V",
+      "entry_time": "2026-05-26 10:00",
+      "exit_time": "2026-06-02 09:30",
+      "entry_price": 325.08,
+      "exit_price": 313.87,
+      "pnl_dollars": -383.67,
+      "pnl_pct": -3.45,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2026-06-02 09:30",
+      "exit_time": "2026-06-03 15:00",
+      "entry_price": 605.0,
+      "exit_price": 622.96,
+      "pnl_dollars": 325.68,
+      "pnl_pct": 2.97,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-05-29 09:30",
+      "exit_time": "2026-06-04 15:00",
+      "entry_price": 227.81,
+      "exit_price": 228.23,
+      "pnl_dollars": 20.47,
+      "pnl_pct": 0.18,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_time": "2026-06-03 15:00",
+      "exit_time": "2026-06-09 11:00",
+      "entry_price": 427.6,
+      "exit_price": 401.88,
+      "pnl_dollars": -662.16,
+      "pnl_pct": -6.01,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_time": "2026-06-05 09:30",
+      "exit_time": "2026-06-12 15:00",
+      "entry_price": 723.72,
+      "exit_price": 721.27,
+      "pnl_dollars": -37.41,
+      "pnl_pct": -0.34,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2026-06-12 12:00",
+      "exit_time": "2026-06-15 09:30",
+      "entry_price": 147.57,
+      "exit_price": 139.09,
+      "pnl_dollars": -632.52,
+      "pnl_pct": -5.75,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "DIS",
+      "entry_time": "2026-05-12 09:30",
+      "exit_time": "2026-06-15 10:00",
+      "entry_price": 104.69,
+      "exit_price": 101.86,
+      "pnl_dollars": -298.69,
+      "pnl_pct": -2.7,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "KO",
+      "entry_time": "2026-06-15 09:30",
+      "exit_time": "2026-06-23 10:00",
+      "entry_price": 80.99,
+      "exit_price": 80.19,
+      "pnl_dollars": -108.29,
+      "pnl_pct": -0.99,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "JNJ",
+      "entry_time": "2026-06-16 09:30",
+      "exit_time": "2026-06-23 10:00",
+      "entry_price": 231.9,
+      "exit_price": 235.46,
+      "pnl_dollars": 167.82,
+      "pnl_pct": 1.54,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "PFE",
+      "entry_time": "2026-05-15 09:30",
+      "exit_time": "2026-06-23 15:00",
+      "entry_price": 25.61,
+      "exit_price": 24.72,
+      "pnl_dollars": -385.31,
+      "pnl_pct": -3.48,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "AMZN",
+      "entry_time": "2026-06-17 09:30",
+      "exit_time": "2026-06-24 10:00",
+      "entry_price": 242.12,
+      "exit_price": 241.01,
+      "pnl_dollars": -50.14,
+      "pnl_pct": -0.46,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2026-06-23 10:00",
+      "exit_time": "2026-06-24 12:00",
+      "entry_price": 327.28,
+      "exit_price": 340.57,
+      "pnl_dollars": 441.76,
+      "pnl_pct": 4.06,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_time": "2026-06-23 10:00",
+      "exit_time": "2026-06-30 09:30",
+      "entry_price": 718.87,
+      "exit_price": 731.87,
+      "pnl_dollars": 196.73,
+      "pnl_pct": 1.81,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "SPY",
+      "entry_time": "2026-06-23 15:00",
+      "exit_time": "2026-06-30 09:30",
+      "entry_price": 733.67,
+      "exit_price": 743.92,
+      "pnl_dollars": 151.56,
+      "pnl_pct": 1.4,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2026-06-24 14:00",
+      "exit_time": "2026-06-30 15:00",
+      "entry_price": 171.78,
+      "exit_price": 165.81,
+      "pnl_dollars": -379.49,
+      "pnl_pct": -3.48,
+      "reason": "Stop Loss"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2026-06-30 11:00",
+      "exit_time": "2026-07-02 11:00",
+      "entry_price": 57.18,
+      "exit_price": 58.59,
+      "pnl_dollars": 269.33,
+      "pnl_pct": 2.47,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2026-07-01 09:30",
+      "exit_time": "2026-07-06 13:00",
+      "entry_price": 930.1,
+      "exit_price": 947.81,
+      "pnl_dollars": 206.86,
+      "pnl_pct": 1.9,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "META",
+      "entry_time": "2026-07-06 13:00",
+      "exit_time": "2026-07-07 09:30",
+      "entry_price": 593.79,
+      "exit_price": 612.85,
+      "pnl_dollars": 351.32,
+      "pnl_pct": 3.21,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2026-07-01 09:30",
+      "exit_time": "2026-07-08 09:30",
+      "entry_price": 166.53,
+      "exit_price": 175.78,
+      "pnl_dollars": 603.45,
+      "pnl_pct": 5.55,
+      "reason": "Take Profit"
+    },
+    {
+      "symbol": "WMT",
+      "entry_time": "2026-06-25 10:00",
+      "exit_time": "2026-07-08 11:00",
+      "entry_price": 116.8,
+      "exit_price": 113.43,
+      "pnl_dollars": -315.4,
+      "pnl_pct": -2.89,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "HD",
+      "entry_time": "2026-07-07 15:00",
+      "exit_time": "2026-07-10 09:30",
+      "entry_price": 345.16,
+      "exit_price": 341.28,
+      "pnl_dollars": -123.76,
+      "pnl_pct": -1.12,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "SPY",
+      "entry_time": "2026-07-08 10:00",
+      "exit_time": "2026-07-10 09:30",
+      "entry_price": 741.84,
+      "exit_price": 752.92,
+      "pnl_dollars": 164.18,
+      "pnl_pct": 1.49,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "BAC",
+      "entry_time": "2026-07-08 13:00",
+      "exit_time": "2026-07-10 10:00",
+      "entry_price": 58.54,
+      "exit_price": 59.73,
+      "pnl_dollars": 223.86,
+      "pnl_pct": 2.03,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_time": "2026-07-02 11:00",
+      "exit_time": "2026-07-10 11:00",
+      "entry_price": 715.87,
+      "exit_price": 723.24,
+      "pnl_dollars": 112.63,
+      "pnl_pct": 1.03,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "XOM",
+      "entry_time": "2026-07-10 09:30",
+      "exit_time": "2026-07-13 09:30",
+      "entry_price": 137.67,
+      "exit_price": 142.68,
+      "pnl_dollars": 403.33,
+      "pnl_pct": 3.64,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "CVX",
+      "entry_time": "2026-07-10 10:00",
+      "exit_time": "2026-07-13 09:30",
+      "entry_price": 174.87,
+      "exit_price": 180.3,
+      "pnl_dollars": 344.05,
+      "pnl_pct": 3.11,
+      "reason": "RSI Overbought"
+    },
+    {
+      "symbol": "COST",
+      "entry_time": "2026-07-10 11:00",
+      "exit_time": "2026-07-13 10:00",
+      "entry_price": 911.99,
+      "exit_price": 922.66,
+      "pnl_dollars": 129.51,
+      "pnl_pct": 1.17,
+      "reason": "RSI Overbought"
+    }
+  ]
+}

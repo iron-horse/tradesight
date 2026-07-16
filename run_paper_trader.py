@@ -16,7 +16,7 @@ import os
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from utils.keychain import get_alpaca_api_key, get_alpaca_secret_key
+# Legacy Alpaca keys are no longer imported from keychain since migrating to IBKR
 from trading.paper_trader import PaperTrader
 from datetime import datetime
 
@@ -26,18 +26,12 @@ if datetime.now().weekday() >= 5:
     sys.exit(0)
 
 def main():
-    # Get Alpaca keys
-    api_key = get_alpaca_api_key()
-    secret_key = get_alpaca_secret_key()
+    # Get Alpaca keys from environment if set, otherwise default to None (IBKR/Demo mode)
+    api_key = os.environ.get("ALPACA_API_KEY")
+    secret_key = os.environ.get("ALPACA_SECRET_KEY")
     
-    if not api_key or not secret_key:
-        print("No Alpaca API keys found. Running in DEMO mode.")
-        print("Store keys: security add-generic-password -s TradeSight-Alpaca-Key -a api-key -w YOUR_KEY -U")
-        api_key = None
-        secret_key = None
-    else:
-        mode_str = "paper trading"
-        print(f"Alpaca keys loaded ({mode_str} mode)")
+    if api_key and secret_key:
+        print("Alpaca keys loaded from environment")
     
     base_dir = os.path.dirname(__file__)
     trader = PaperTrader(base_dir=base_dir, alpaca_api_key=api_key, alpaca_secret=secret_key)
@@ -60,7 +54,7 @@ def main():
         print(f"   Strategies:   {strats}")
     else:
         ts = datetime.now().strftime('%Y-%m-%d %H:%M')
-        trade_mode = "LIVE PAPER" if api_key else "DEMO"
+        trade_mode = "ALPACA PAPER" if api_key else "IBKR PAPER"
         print(f"Starting paper trading session ({ts})")
         print(f"   Mode: {trade_mode}")
         print()

@@ -37,7 +37,7 @@ try:
     _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..'))
     from alerts.alert_manager import AlertManager as _AlertManager
     from alerts.alert_types import AlertType as _AlertType
-    from config import ALERTS_CONFIG as _ALERTS_CONFIG
+    from config import ALERTS_CONFIG as _ALERTS_CONFIG, IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
     _SCANNER_ALERTS_AVAILABLE = True
 except Exception:
     _SCANNER_ALERTS_AVAILABLE = False
@@ -64,9 +64,9 @@ class StockScanner:
             paper_trading: Use paper trading endpoints
         """
         self.alpaca = AlpacaClient(
-            api_key=alpaca_api_key, 
-            secret_key=alpaca_secret,
-            paper=paper_trading
+            host=IBKR_HOST,
+            port=IBKR_PORT,
+            client_id=IBKR_CLIENT_ID
         )
         self.scorer = StockOpportunityScorer()
         self.last_scan_result = None

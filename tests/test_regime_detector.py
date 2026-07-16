@@ -265,10 +265,15 @@ class TestFetchVix:
         
         yfinance is imported inside fetch_vix(), so we patch at the import level.
         """
-        import yfinance as yf_real
-        with patch.object(yf_real, 'download', side_effect=Exception('network error')):
+        try:
+            import yfinance as yf_real
+            with patch.object(yf_real, 'download', side_effect=Exception('network error')):
+                result = fetch_vix()
+            assert result is None
+        except ModuleNotFoundError:
+            # If yfinance is not installed, fetch_vix() should return None gracefully
             result = fetch_vix()
-        assert result is None
+            assert result is None
 
     def test_fetch_vix_returns_float_or_none_on_success(self):
         """fetch_vix either returns a float (on valid data) or None (graceful fallback).

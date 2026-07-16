@@ -518,7 +518,9 @@ class AlpacaClient:
     
     def _generate_demo_data(self, symbol: str, days: int) -> pd.DataFrame:
         """Generate realistic demo OHLCV data"""
-        np.random.seed((hash(symbol) + int(datetime.now().strftime("%Y%m%d"))) % 2147483647)  # Varies daily per symbol
+        import zlib
+        symbol_seed = zlib.adler32(symbol.encode('utf-8'))
+        np.random.seed((symbol_seed + int(datetime.now().strftime("%Y%m%d"))) % 2147483647)  # Varies daily per symbol
         
         dates = pd.date_range(end=datetime.now(), periods=days, freq='D')
         

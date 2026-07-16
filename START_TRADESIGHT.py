@@ -6,9 +6,7 @@ Double-click this file to start TradeSight
 
 import os
 import sys
-import webbrowser
 import time
-from threading import Timer
 
 def main():
     print("🎯 TradeSight - Trading Intelligence Platform")
@@ -18,22 +16,14 @@ def main():
     # Change to TradeSight directory (resolve relative to this script)
     project_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_dir)
-    sys.path.insert(0, os.path.join(project_dir, "src"))
+    # Prioritize project root to load the new web/dashboard.py, append src for internal imports
+    sys.path.insert(0, project_dir)
+    sys.path.append(os.path.join(project_dir, "src"))
     
     print("🌐 Dashboard will be at: http://localhost:5000")
-    print("💡 Browser will open automatically")
+    print("💡 Please manually open http://localhost:5000 in your browser")
     print("⚠️  Keep this window open while using TradeSight")
     print("")
-    
-    # Auto-open browser
-    def open_browser():
-        try:
-            webbrowser.open("http://localhost:5000")
-            print("✅ Browser opened")
-        except Exception as e:
-            print(f"ℹ️  Please manually open: http://localhost:5000")
-    
-    Timer(3.0, open_browser).start()
     
     # Start Flask app
     try:

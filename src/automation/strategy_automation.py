@@ -33,7 +33,7 @@ try:
     _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..'))
     from alerts.alert_manager import AlertManager as _AlertManager
     from alerts.alert_types import AlertType as _AlertType
-    from config import ALERTS_CONFIG as _ALERTS_CONFIG
+    from config import ALERTS_CONFIG as _ALERTS_CONFIG, IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
     _AUTOMATION_ALERTS_AVAILABLE = True
 except Exception:
     _AUTOMATION_ALERTS_AVAILABLE = False
@@ -110,7 +110,7 @@ class StrategyAutomation:
         Returns None if fetch fails (caller falls back to synthetic data).
         """
         try:
-            client = AlpacaClient()
+            client = AlpacaClient(host=IBKR_HOST, port=IBKR_PORT, client_id=IBKR_CLIENT_ID)
             data = client.get_historical_data(symbol, days=days, timeframe='1Day')
             if data is not None and len(data) >= 50:
                 self.logger.info(f"Fetched {len(data)} bars for {symbol}")

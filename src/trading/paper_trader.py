@@ -368,7 +368,8 @@ class PaperTrader:
                 qualified_winners = []
                 
                 for winner, score, start_time in winners:
-                    if score >= self.config['min_strategy_confidence'] and winner not in seen_strategies:
+                    # Bug fix: winner_avg_score in tournament is raw P&L (e.g. 0.01 = 1%), not signal confidence (e.g. 0.55)
+                    if score > 0.0 and winner not in seen_strategies:
                         qualified_winners.append((winner, score))
                         seen_strategies.add(winner)
                 
@@ -951,15 +952,16 @@ class PaperTrader:
             if order_result and order_result.get('status') in ['filled', 'accepted']:
                 # Record position
                 fill_price = order_result.get('fill_price') or price
+                actual_qty = float(order_result.get('quantity', quantity))
                 self.logger.info(
-                    f"[BuyOrder] Order accepted: {symbol} qty={quantity:.4f} "
+                    f"[BuyOrder] Order accepted: {symbol} qty={actual_qty:.4f} (calc={quantity:.4f}) "
                     f"@ ${fill_price:.2f} status={order_result.get('status')}"
                 )
                 success = self.position_manager.open_position(
                     symbol=symbol,
                     strategy=strategy,
                     side=side,
-                    quantity=quantity,
+                    quantity=actual_qty,
                     entry_price=fill_price,
                     entry_order_id=order_result.get('order_id'),
                     entry_fill_status=order_result.get('status', 'filled')
@@ -973,8 +975,11 @@ class PaperTrader:
                         with sqlite3.connect(db_path) as _jc:
                             _jc.execute(
                                 "UPDATE positions SET entry_reason=? "
-                                "WHERE symbol=? AND strategy=? AND status='open' "
-                                "ORDER BY entry_time DESC LIMIT 1",
+                                "WHERE id = ( "
+                                "    SELECT id FROM positions "
+                                "    WHERE symbol=? AND strategy=? AND status='open' "
+                                "    ORDER BY entry_time DESC LIMIT 1 "
+                                ")",
                                 (entry_reason, symbol, strategy))
                             _jc.commit()
                     except Exception as journal_err:
@@ -1387,8 +1392,11 @@ class PaperTrader:
                             with sqlite3.connect(_db) as _jc2:
                                 _jc2.execute(
                                     "UPDATE positions SET exit_reason=? "
-                                    "WHERE symbol=? AND strategy=? AND status='closed' "
-                                    "ORDER BY exit_time DESC LIMIT 1",
+                                    "WHERE id = ( "
+                                    "        SELECT id FROM positions "
+                                    "        WHERE symbol=? AND strategy=? AND status='closed' "
+                                    "        ORDER BY exit_time DESC LIMIT 1 "
+                                    ")",
                                     (trigger, symbol, strategy))
                                 _jc2.commit()
                         except Exception as exit_reason_err:
@@ -1794,18 +1802,45 @@ class PaperTrader:
 
     def _sync_with_broker(self):
         """Sync local state with IBKR TWS reality - call at start of every session."""
+        if self.alpaca.demo_mode:
+            self.logger.warning("IBKR client is running in DEMO mode — skipping broker sync to preserve local state")
+            return
         try:
             account = self.alpaca.get_account()
             if not account:
-                self.logger.warning("Could not fetch Alpaca account - skipping sync")
+                self.logger.warning("Could not fetch IBKR account - skipping sync")
                 return
-            
+
             real_equity = float(account.get("equity", 0))
             real_cash = float(account.get("buying_power", 0))
             real_positions_value = float(account.get("long_market_value", 0))
-            
-            self.logger.info("IBKR account: equity=$%.2f, buying_power=$%.2f, positions=$%.2f" % (real_equity, real_cash, real_positions_value))
-            
+
+            # If equity is zero, ib.portfolio() may not have arrived yet.
+            # Wait up to 5 seconds for the first updatePortfolio stream from TWS.
+            if real_equity <= 0:
+                self.logger.info("IBKR sync: waiting for portfolio stream from TWS...")
+                for _ in range(10):
+                    time.sleep(0.5)
+                    account = self.alpaca.get_account()
+                    real_equity = float(account.get("equity", 0))
+                    real_cash = float(account.get("buying_power", 0))
+                    real_positions_value = float(account.get("long_market_value", 0))
+                    if real_equity > 0:
+                        break
+
+            # Still zero after waiting — TWS is connected but streaming no data (demo or no positions)
+            if real_equity <= 0:
+                self.logger.warning(
+                    "IBKR sync skipped: equity=$0.00 — TWS connected but no portfolio data received. "
+                    "Check market data subscriptions or that the paper account has positions/cash."
+                )
+                return
+
+            self.logger.info(
+                "✅ IBKR account synced: equity=$%.2f, buying_power=$%.2f, positions_value=$%.2f"
+                % (real_equity, real_cash, real_positions_value)
+            )
+
             # Check for orphan positions (in Alpaca but not in our DB)
             remote_positions = self.alpaca.get_remote_positions()
             local_state = self.position_manager.get_portfolio_state()
@@ -1836,6 +1871,11 @@ class PaperTrader:
             self._real_buying_power = real_cash
             self._real_equity = real_equity
             self._alpaca_synced = True
+
+            # Scale local initial_balance so that total_value (initial_balance + PnL) matches real_equity
+            local_state = self.position_manager.get_portfolio_state()
+            total_pnl = local_state.total_pnl or 0.0
+            self.position_manager.config['initial_balance'] = real_equity - total_pnl
 
             # Persist buying power to DB so get_portfolio_state() can use real balance
             self.position_manager.persist_balance_sync(real_cash)

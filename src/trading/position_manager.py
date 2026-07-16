@@ -83,7 +83,7 @@ class PositionManager:
         
         # Portfolio parameters
         self.config = {
-            'initial_balance': float(initial_balance),    # Starting paper money ($500 realistic account)
+            'initial_balance': float(initial_balance),    # Fallback balance before IBKR sync
             'max_position_size': 0.15,   # 15% max per position (~$75 max on $500)
             'max_strategy_allocation': 0.80,  # 80% max per strategy
             'stop_loss_percent': 0.05,   # 5% stop loss
@@ -418,26 +418,30 @@ class PositionManager:
                 ''').fetchone()
                 
                 position_count, positions_value, unrealized_pnl, realized_pnl = summary or (0, 0, 0, 0)
-                
-                # Calculate portfolio metrics
                 total_pnl = (unrealized_pnl or 0) + (realized_pnl or 0)
-                total_value = self.config['initial_balance'] + total_pnl
-                available_cash = total_value - (positions_value or 0)
-                
+
                 # Get active strategies
                 strategies = conn.execute('''
-                    SELECT DISTINCT strategy FROM positions 
+                    SELECT DISTINCT strategy FROM positions
                     WHERE status = 'open'
                 ''').fetchall()
-                
                 strategies_active = [s[0] for s in strategies]
-                
-                # Try to load persisted Alpaca buying power
+
+                # Load persisted real USD balance from IBKR sync
                 cached_balance = conn.execute(
                     "SELECT buying_power, synced_at FROM balance_cache WHERE id = 1"
                 ).fetchone()
                 real_buying_power = cached_balance[0] if cached_balance else None
                 balance_synced_at = cached_balance[1] if cached_balance else None
+
+                # Calculate portfolio metrics
+                total_pnl = (unrealized_pnl or 0) + (realized_pnl or 0)
+                if real_buying_power is not None:
+                    available_cash = real_buying_power
+                    total_value = available_cash + (positions_value or 0)
+                else:
+                    total_value = self.config['initial_balance'] + total_pnl
+                    available_cash = total_value - (positions_value or 0)
 
                 return PortfolioState(
                     total_value=total_value,

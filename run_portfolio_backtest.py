@@ -31,7 +31,7 @@ from data.ibkr_client import IBKRClient
 # To test the last 1 year (intraday): set TIMEFRAME = "1Hour" and DAYS = 365
 # ==============================================================================
 TIMEFRAME = "1Hour"  # "1Hour" or "1Day"
-DAYS = 1095         # Number of calendar days (365 = 1 year, 1095 = 3 years)
+DAYS = 365          # Number of calendar days (365 = 1 year, 1095 = 3 years)
 # ==============================================================================
 
 def run_portfolio_simulation():
@@ -371,6 +371,39 @@ def run_portfolio_simulation():
     with open(report_path, "w") as rf:
         json.dump(report_data, rf, indent=2)
     print(f"\n💾 Full list of all {len(closed_trades)} trades saved to: {report_path}")
+
+    # Generate equity curve graph
+    try:
+        print("\n📊 Generating equity curve plot...")
+        import matplotlib.pyplot as plt
+        
+        # Create Series from equity curve and unique timestamps
+        if len(equity_curve) == len(all_timestamps):
+            equity_series = pd.Series(equity_curve, index=all_timestamps)
+            
+            plt.figure(figsize=(12, 6))
+            plt.plot(equity_series, color='#2b6cb0', label='Portfolio Equity Value', linewidth=1.5)
+            plt.title(f'TradeSight Portfolio Equity Curve ({DAYS} Days, {TIMEFRAME})', fontsize=14, fontweight='bold')
+            plt.xlabel('Date', fontsize=12)
+            plt.ylabel('Account Value ($)', fontsize=12)
+            plt.grid(True, linestyle='--', alpha=0.5)
+            
+            # Draw baseline at initial value
+            plt.axhline(y=initial_balance, color='#e53e3e', linestyle=':', label=f'Initial Value (${initial_balance:,.0f})', alpha=0.7)
+            plt.legend(loc='upper left', fontsize=10)
+            
+            # Format y-axis
+            plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f"${x:,.0f}"))
+            
+            plot_path = "reports/portfolio_backtest_equity_curve.png"
+            plt.tight_layout()
+            plt.savefig(plot_path, dpi=300)
+            print(f"✅ Equity curve chart saved to: {plot_path}")
+            plt.close()
+        else:
+            print(f"⚠️ Cannot generate plot: equity curve length ({len(equity_curve)}) does not match timestamps ({len(all_timestamps)})")
+    except Exception as e:
+        print(f"⚠️ Could not generate plot: {e}")
 
 if __name__ == "__main__":
     run_portfolio_simulation()
