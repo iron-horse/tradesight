@@ -41,6 +41,8 @@ class OpportunityScore:
     current_price: float = 0.0
     avg_volume: float = 0.0
     volatility_pct: float = 0.0
+    target_price: float = 0.0
+    target_pct: float = 0.0
 
 
 class StockOpportunityScorer:
@@ -142,6 +144,57 @@ class StockOpportunityScorer:
         else:
             confidence = 'low'
         
+        # 6. Target Price calculation dynamically reading from data/target_price_champion.json
+        import os, json
+        champ_file = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'target_price_champion.json')
+        
+        high_mult = 1.0
+        med_mult = 0.75
+        high_min = 50.0
+        med_min = 40.0
+
+        try:
+            if os.path.exists(champ_file):
+                with open(champ_file) as _cf:
+                    _cdata = json.load(_cf)
+                    high_mult = float(_cdata.get('high_conf_atr_multiplier', _cdata.get('atr_multiplier', 1.0)))
+                    med_mult = float(_cdata.get('med_conf_atr_multiplier', 0.75))
+                    high_min = float(_cdata.get('high_conf_min_score', 50.0))
+                    med_min = float(_cdata.get('med_conf_min_score', 40.0))
+        except Exception:
+            pass
+
+        if overall >= high_min:
+            atr_mult = high_mult
+        elif med_min <= overall < high_min:
+            atr_mult = med_mult
+        else:
+            atr_mult = 0.0
+
+        high_s = data['high']
+        low_s = data['low']
+        close_s = data['close']
+        tr1 = high_s - low_s
+        tr2 = (high_s - close_s.shift(1)).abs()
+        tr3 = (low_s - close_s.shift(1)).abs()
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        atr_14 = float(tr.rolling(14).mean().iloc[-1]) if len(tr) >= 14 else (current_price * 0.02)
+        if pd.isna(atr_14) or atr_14 <= 0:
+            atr_14 = current_price * 0.02
+
+        if atr_mult == 0.0 or direction == 'neutral':
+            target_price = round(current_price, 2)
+            target_pct = 0.0
+        elif direction == 'bullish':
+            target_price = round(current_price + (atr_mult * atr_14), 2)
+            target_pct = round(((target_price / current_price) - 1.0) * 100.0, 1) if current_price > 0 else 0.0
+        elif direction == 'bearish':
+            target_price = round(max(0.01, current_price - (atr_mult * atr_14)), 2)
+            target_pct = round(((target_price / current_price) - 1.0) * 100.0, 1) if current_price > 0 else 0.0
+        else:
+            target_price = round(current_price, 2)
+            target_pct = 0.0
+        
         return OpportunityScore(
             symbol=symbol,
             timestamp=data.index[-1] if hasattr(data.index[-1], 'isoformat') else datetime.now(),
@@ -157,7 +210,9 @@ class StockOpportunityScorer:
             risk_factors=risks,
             current_price=current_price,
             avg_volume=float(data['volume'].tail(20).mean()),
-            volatility_pct=vol_pct
+            volatility_pct=vol_pct,
+            target_price=target_price,
+            target_pct=target_pct
         )
     
     def rank_opportunities(self,

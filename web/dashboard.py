@@ -4,6 +4,15 @@ TradeSight Unified Dashboard
 Multi-market intelligence platform showing Polymarket, Stocks, and Strategy Lab
 """
 
+import os
+import sys
+
+# Auto-redirect to local venv python if running with system python
+_project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_venv_python = os.path.abspath(os.path.join(_project_dir, ".venv", "bin", "python"))
+if os.path.exists(_venv_python) and ".venv" not in sys.executable:
+    os.execv(_venv_python, [_venv_python] + sys.argv)
+
 from flask import Flask, render_template, jsonify, request
 import sqlite3
 import json
@@ -147,14 +156,44 @@ def get_polymarket_stats():
             'error': str(e)
         }
 
+def get_cluster_symbols() -> list:
+    """Load all unique symbols from data/symbol_clusters.json.
+
+    This is the single source of truth for which symbols the scanner
+    examines. Adding a ticker to symbol_clusters.json automatically
+    includes it in every dashboard scan — no code change needed.
+    """
+    import json as _json
+    cluster_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'symbol_clusters.json')
+    try:
+        with open(cluster_file) as f:
+            clusters = _json.load(f)
+        seen = set()
+        symbols = []
+        for cluster in clusters.values():
+            for sym in cluster.get('symbols', []):
+                if sym not in seen:
+                    seen.add(sym)
+                    symbols.append(sym)
+        return symbols
+    except Exception as e:
+        import logging
+        logging.getLogger('dashboard').warning('Could not load symbol_clusters.json: %s', e)
+        # Fallback: scan the default SP500 subset
+        return []
+
 def get_stock_stats():
     """Get stock market statistics"""
     try:
         # Create scanner using the shared IBKR client singleton (avoids new connections)
         scanner = StockScanner(ibkr_client=get_ibkr_client())
-        
-        # Run a quick scan (using the correct method name)
-        scan_result = scanner.quick_scan(limit=5)
+
+        # Scan every symbol defined in symbol_clusters.json
+        cluster_symbols = get_cluster_symbols()
+        if cluster_symbols:
+            scan_result = scanner.custom_scan(symbols=cluster_symbols, min_score=30.0)
+        else:
+            scan_result = scanner.quick_scan(limit=5)  # fallback
         
         return {
             'total_scanned': scan_result.total_scanned,
@@ -162,7 +201,8 @@ def get_stock_stats():
             'scan_duration': scan_result.scan_duration_seconds,
             'last_scan': scan_result.scan_time.isoformat(),
             'top_opportunity': scan_result.top_opportunities[0].symbol if scan_result.top_opportunities else None,
-            'top_score': scan_result.top_opportunities[0].overall_score if scan_result.top_opportunities else 0
+            'top_score': scan_result.top_opportunities[0].overall_score if scan_result.top_opportunities else 0,
+            'expected_horizon': '1–3 Weeks (Swing Trading)'
         }
     except Exception as e:
         return {
@@ -278,7 +318,11 @@ def stocks_opportunities():
     """API endpoint for stock opportunities"""
     try:
         scanner = StockScanner(ibkr_client=get_ibkr_client())
-        scan_result = scanner.quick_scan(limit=7)
+        cluster_symbols = get_cluster_symbols()
+        if cluster_symbols:
+            scan_result = scanner.custom_scan(symbols=cluster_symbols, min_score=30.0)
+        else:
+            scan_result = scanner.quick_scan(limit=7)  # fallback
         
         opportunities = []
         for opp in scan_result.top_opportunities:
@@ -293,9 +337,15 @@ def stocks_opportunities():
                 'confidence': opp.confidence,
                 'direction': opp.direction,
                 'current_price': getattr(opp, 'current_price', 0),
+                'target_price': getattr(opp, 'target_price', 0),
+                'target_pct': getattr(opp, 'target_pct', 0),
                 'volume': getattr(opp, 'volume', 0),
                 'market_cap': getattr(opp, 'market_cap', 0)
             })
+        
+        query = (request.args.get('q') or request.args.get('symbol') or '').strip().upper()
+        if query:
+            opportunities = [o for o in opportunities if query in o['symbol'].upper()]
         
         return jsonify(sanitize_for_json(opportunities))
         

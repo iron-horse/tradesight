@@ -44,6 +44,17 @@ except ImportError:
     _INDICATORS_AVAILABLE = False
     TechnicalIndicators = None
 
+try:
+    from data.data_cache import HistoricalDataCache as _HistoricalDataCache
+    _CACHE_AVAILABLE = True
+except ImportError:
+    try:
+        from data_cache import HistoricalDataCache as _HistoricalDataCache
+        _CACHE_AVAILABLE = True
+    except ImportError:
+        _CACHE_AVAILABLE = False
+        _HistoricalDataCache = None
+
 logger = logging.getLogger("IBKRClient")
 
 # ---------------------------------------------------------------------------
@@ -315,6 +326,19 @@ class IBKRClient:
         self._demo_fallback_count = 0
         self._last_request_time = 0.0
 
+        # Disk cache — stores DataFrames as Parquet files in data/cache/
+        # Falls back gracefully if the module is unavailable.
+        if _CACHE_AVAILABLE:
+            try:
+                _base = _src_dir.replace('/src', '') if '/src' in _src_dir else _src_dir
+                _cache_dir = os.path.join(os.path.dirname(_src_dir), 'data', 'cache')
+                self._cache = _HistoricalDataCache(_cache_dir)
+            except Exception as _ce:
+                logger.warning("[IBKRClient] Cache init failed: %s — running without cache", _ce)
+                self._cache = None
+        else:
+            self._cache = None
+
         if self.demo_mode:
             logger.warning(
                 "[IBKRClient] TWS unreachable — running in DEMO MODE. "
@@ -356,11 +380,40 @@ class IBKRClient:
         timeframe: str = "1Day",
         end_date: str = "",
     ) -> pd.DataFrame:
+        # ------------------------------------------------------------------
+        # Cache lookup — skipped for end_date requests (precise backfills
+        # must always fetch exact bars from TWS, not a cached snapshot).
+        # ------------------------------------------------------------------
+        use_cache = self._cache is not None and not end_date
+        if use_cache:
+            cached = self._cache.get(symbol, days, timeframe)
+            if cached is not None:
+                logger.debug(
+                    "[IBKRClient] Cache HIT %s/%s/%dd (%d bars)",
+                    symbol, timeframe, days, len(cached),
+                )
+                return cached
+
+        # ------------------------------------------------------------------
+        # Demo / disconnected path
+        # ------------------------------------------------------------------
         if self.demo_mode or not self._ensure_connected():
+            # Prefer stale cache over synthetic random-walk data
+            if use_cache:
+                stale = self._cache.get(symbol, days, timeframe, allow_stale=True)
+                if stale is not None:
+                    logger.info(
+                        "[IBKRClient] TWS unavailable — serving stale cache for %s (%d bars)",
+                        symbol, len(stale),
+                    )
+                    return stale
             df = self._generate_demo_data(symbol, days)
             df.attrs["data_source"] = "demo_mode"
             return df
 
+        # ------------------------------------------------------------------
+        # Live TWS fetch
+        # ------------------------------------------------------------------
         bar_size = _TIMEFRAME_MAP.get(timeframe, "1 day")
         duration = _duration_str(days, bar_size)
 
@@ -398,15 +451,29 @@ class IBKRClient:
             max_rows = days * _BARS_PER_DAY.get(bar_size, 1)
             df = df.tail(max_rows)
             df.attrs["data_source"] = "ibkr"
+
+            # Persist to cache so next run is instant
+            if use_cache:
+                self._cache.put(symbol, days, timeframe, df)
+
             return df
 
         except Exception as e:
             self._demo_fallback_count += 1
             logger.warning(
                 "[IBKRClient] get_historical_data(%s) failed: %s — "
-                "falling back to DEMO data (fallback #%d)",
+                "trying stale cache, then DEMO data (fallback #%d)",
                 symbol, e, self._demo_fallback_count,
             )
+            # Prefer stale cache over synthetic random-walk data
+            if use_cache:
+                stale = self._cache.get(symbol, days, timeframe, allow_stale=True)
+                if stale is not None:
+                    logger.info(
+                        "[IBKRClient] Serving stale cache for %s (%d bars) after TWS error",
+                        symbol, len(stale),
+                    )
+                    return stale
             df = self._generate_demo_data(symbol, days)
             df.attrs["data_source"] = "demo_fallback"
             df.attrs["fallback_reason"] = str(e)

@@ -6,6 +6,15 @@ Web dashboard showing trading performance, equity curve, win rates.
 Runs on port 5001 (same as existing TradeSight Flask app if any).
 """
 
+import os
+import sys
+
+# Auto-redirect to local venv python if running with system python
+_project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_venv_python = os.path.abspath(os.path.join(_project_dir, ".venv", "bin", "python"))
+if os.path.exists(_venv_python) and ".venv" not in sys.executable:
+    os.execv(_venv_python, [_venv_python] + sys.argv)
+
 import json
 import sqlite3
 import logging

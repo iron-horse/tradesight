@@ -233,6 +233,8 @@ class PaperTrader:
                 'XOM', 'CVX',                       # Energy
                 'WMT', 'COST', 'HD',               # Consumer/Retail
                 'KO', 'DIS',                        # Consumer staples + media
+                'NVDA', 'AVGO', 'MRVL', 'MU', 'ALAB', 'SOXX',  # Semiconductors
+                # 'SOXL', 'DRAM',                  # 3x/2x Leveraged ETFs (future)
             ],
             'min_strategy_confidence': 0.55,  # Slightly higher bar for fewer, better trades
             'max_concurrent_trades': 5,       # 5 positions for more data (fractional shares)
@@ -249,6 +251,8 @@ class PaperTrader:
                 'healthcare': ['JNJ', 'PFE'],
                 'energy': ['XOM', 'CVX'],
                 'consumer': ['WMT', 'COST', 'HD', 'KO', 'DIS'],
+                'semiconductors': ['SOXX', 'NVDA', 'AVGO', 'MRVL', 'MU', 'ALAB'],
+                # 'leveraged_etf': ['SOXL', 'DRAM'],  # future
             },
             'max_per_correlation_group': 2,
             'daily_loss_limit': 15.0,  # Task 890 — block new entries if daily P&L <= -$15

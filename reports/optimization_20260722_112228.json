@@ -1,0 +1,129 @@
+{
+  "winner": "RSI Mean Reversion",
+  "tournament_winner": "Bollinger Bounce",
+  "version": "v3-real-data",
+  "baseline": {
+    "pnl_pct": 18.96393737883425,
+    "sharpe": 1.15832733481548,
+    "win_rate": 83.33333333333334,
+    "parameters": {
+      "oversold": 30,
+      "overbought": 65,
+      "position_size": 0.15,
+      "stop_loss_pct": 0.05,
+      "take_profit_pct": 0.12,
+      "max_holding_bars": 0
+    }
+  },
+  "optimized": {
+    "pnl_pct": 6.569374074866369,
+    "sharpe": 0.4259258286467843,
+    "win_rate": 75.0,
+    "parameters": {
+      "oversold": 35,
+      "overbought": 72,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.08,
+      "take_profit_pct": 0.12,
+      "max_holding_bars": 0
+    },
+    "composite_score": 0.3253307216092335
+  },
+  "improvement": {
+    "pnl_pct": -12.39456330396788,
+    "sharpe": -0.7324015061686956
+  },
+  "top_5_variants": [
+    {
+      "parameters": {
+        "oversold": 35,
+        "overbought": 72,
+        "position_size": 0.25,
+        "stop_loss_pct": 0.08,
+        "take_profit_pct": 0.12,
+        "max_holding_bars": 0
+      },
+      "pnl_pct": 6.569374074866369,
+      "sharpe": 0.4259258286467843,
+      "win_rate": 75.0,
+      "score": 0.3253307216092335
+    },
+    {
+      "parameters": {
+        "oversold": 35,
+        "overbought": 75,
+        "position_size": 0.25,
+        "stop_loss_pct": 0.08,
+        "take_profit_pct": 0.12,
+        "max_holding_bars": 0
+      },
+      "pnl_pct": 6.569374074866369,
+      "sharpe": 0.4259258286467843,
+      "win_rate": 75.0,
+      "score": 0.3253307216092335
+    },
+    {
+      "parameters": {
+        "oversold": 35,
+        "overbought": 78,
+        "position_size": 0.25,
+        "stop_loss_pct": 0.08,
+        "take_profit_pct": 0.12,
+        "max_holding_bars": 0
+      },
+      "pnl_pct": 6.569374074866369,
+      "sharpe": 0.4259258286467843,
+      "win_rate": 75.0,
+      "score": 0.3253307216092335
+    },
+    {
+      "parameters": {
+        "oversold": 35,
+        "overbought": 72,
+        "position_size": 0.25,
+        "stop_loss_pct": 0.03,
+        "take_profit_pct": 0.12,
+        "max_holding_bars": 0
+      },
+      "pnl_pct": 7.699210275838528,
+      "sharpe": 0.46744236883640106,
+      "win_rate": 60.0,
+      "score": 0.32281380331576476
+    },
+    {
+      "parameters": {
+        "oversold": 35,
+        "overbought": 75,
+        "position_size": 0.25,
+        "stop_loss_pct": 0.03,
+        "take_profit_pct": 0.12,
+        "max_holding_bars": 0
+      },
+      "pnl_pct": 7.699210275838528,
+      "sharpe": 0.46744236883640106,
+      "win_rate": 60.0,
+      "score": 0.32281380331576476
+    }
+  ],
+  "search_space": {
+    "total_combinations": 2400,
+    "parameters_varied": [
+      "oversold",
+      "overbought",
+      "position_size",
+      "stop_loss_pct",
+      "take_profit_pct",
+      "max_holding_bars"
+    ]
+  },
+  "data_source": "synthetic",
+  "symbols_tested": [
+    "SYNTHETIC"
+  ],
+  "primary_symbol": "SYNTHETIC",
+  "cross_validation": null,
+  "walk_forward": null,
+  "timestamp": "2026-07-22T11:22:28.729537",
+  "champion_decision": "REJECTED: synthetic/demo data",
+  "active_params": null
+}

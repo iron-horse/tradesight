@@ -57,7 +57,7 @@
       "overbought": 78,
       "position_size": 0.25,
       "stop_loss_pct": 0.03,
-      "take_profit_pct": 0.05,
+      "take_profit_pct": 0.12,
       "max_holding_bars": 0
     }
   },
@@ -88,6 +88,38 @@
       "position_size": 0.25,
       "stop_loss_pct": 0.03,
       "take_profit_pct": 0.05,
+      "max_holding_bars": 0
+    }
+  },
+  "semiconductors": {
+    "symbols": [
+      "SOXX",
+      "NVDA",
+      "AVGO",
+      "MRVL",
+      "MU",
+      "ALAB"
+    ],
+    "default_params": {
+      "oversold": 35,
+      "overbought": 78,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.08,
+      "take_profit_pct": 0.12,
+      "max_holding_bars": 0
+    }
+  },
+  "leveraged_etf": {
+    "symbols": [
+      "SOXL",
+      "DRAM"
+    ],
+    "default_params": {
+      "oversold": 33,
+      "overbought": 78,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.08,
+      "take_profit_pct": 0.12,
       "max_holding_bars": 0
     }
   }

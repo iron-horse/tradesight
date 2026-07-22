@@ -2,3 +2,4 @@ requests>=2.31.0
 flask>=2.3.0
 ib_async>=2.0.0
 nest_asyncio>=1.6.0
+pyarrow>=14.0.0

@@ -308,25 +308,38 @@
             <div class="card"><div class="value">--</div><h3>Loading...</h3></div>
         </div>
         <div class="table-card">
-            <div class="table-header">
-                <h2>Top Stock Signals</h2>
-                <span class="badge badge-blue" id="stock-count">--</span>
+            <div class="table-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h2>Top Stock Signals</h2>
+                        <span class="badge badge-blue" id="stock-count">--</span>
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+                        <span>⏱️ <strong>Expected Horizon:</strong> <span style="color: #38bdf8; font-weight: 600;" id="trade-horizon-text">1–3 Weeks (Swing Trading)</span></span>
+                        <span style="color: #475569;">•</span>
+                        <span title="Momentum looks back 1–4 weeks; Trend looks back 1–5 months.">ℹ️ Multi-Timeframe Scoring</span>
+                    </div>
+                </div>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="text" id="stock-search-input" placeholder="🔍 Search Symbol (e.g. NVDA)..." oninput="filterStockSignals()" style="background: #0a0e1a; border: 1px solid #2d3748; border-radius: 6px; color: #f1f5f9; padding: 6px 12px; font-size: 13px; width: 240px; outline: none; transition: border-color 0.2s;">
+                </div>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Symbol</th>
-                        <th>Score</th>
-                        <th>Direction</th>
-                        <th>Confidence</th>
-                        <th>Price</th>
-                        <th>Technical</th>
-                        <th>Momentum</th>
-                        <th>Trend</th>
+                        <th onclick="sortTable('symbol')" style="cursor: pointer; user-select: none;">Symbol <span id="sort-icon-symbol" style="color: #64748b; font-size: 11px;">⇅</span></th>
+                        <th onclick="sortTable('overall_score')" style="cursor: pointer; user-select: none;">Score <span id="sort-icon-overall_score" style="color: #22c55e; font-size: 11px;">▼</span></th>
+                        <th onclick="sortTable('direction')" style="cursor: pointer; user-select: none;">Direction <span id="sort-icon-direction" style="color: #64748b; font-size: 11px;">⇅</span></th>
+                        <th onclick="sortTable('confidence')" style="cursor: pointer; user-select: none;">Confidence <span id="sort-icon-confidence" style="color: #64748b; font-size: 11px;">⇅</span></th>
+                        <th onclick="sortTable('current_price')" style="cursor: pointer; user-select: none;">Price <span id="sort-icon-current_price" style="color: #64748b; font-size: 11px;">⇅</span></th>
+                        <th onclick="sortTable('target_price')" style="cursor: pointer; user-select: none;">Target Px <span id="sort-icon-target_price" style="color: #64748b; font-size: 11px;">⇅</span></th>
+                        <th onclick="sortTable('technical_score')" style="cursor: pointer; user-select: none;">Technical <span id="sort-icon-technical_score" style="color: #64748b; font-size: 11px;">⇅</span></th>
+                        <th onclick="sortTable('momentum_score')" style="cursor: pointer; user-select: none;">Momentum <span id="sort-icon-momentum_score" style="color: #64748b; font-size: 11px;">⇅</span></th>
+                        <th onclick="sortTable('trend_score')" style="cursor: pointer; user-select: none;">Trend <span id="sort-icon-trend_score" style="color: #64748b; font-size: 11px;">⇅</span></th>
                     </tr>
                 </thead>
                 <tbody id="stock-opportunities">
-                    <tr><td colspan="8" class="loading-msg">Loading stock data...</td></tr>
+                    <tr><td colspan="9" class="loading-msg">Loading stock data...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -721,6 +734,9 @@
                     <div class="card"><h3>Scanner</h3><div class="value badge-yellow">Demo Mode</div><div class="sub">${d.error}</div></div>`;
                 return;
             }
+            if (d.expected_horizon && document.getElementById('trade-horizon-text')) {
+                document.getElementById('trade-horizon-text').textContent = d.expected_horizon;
+            }
             document.getElementById('stock-stats').innerHTML = `
                 <div class="card"><h3>Stocks Scanned</h3><div class="value blue">${d.total_scanned}</div></div>
                 <div class="card"><h3>Opportunities</h3><div class="value green">${d.opportunities_found}</div></div>
@@ -730,31 +746,125 @@
             document.getElementById('stock-stats').innerHTML = '<div class="card"><div class="value red">Error</div><h3>Failed to load</h3></div>';
         });
 
-        // Stock opportunities
+        // Global storage for instant search & column sorting
+        window.allStockSignals = [];
+        window.stockSortKey = 'overall_score';
+        window.stockSortDir = 'desc';
+
+        window.sortTable = function(key) {
+            if (window.stockSortKey === key) {
+                window.stockSortDir = (window.stockSortDir === 'desc') ? 'asc' : 'desc';
+            } else {
+                window.stockSortKey = key;
+                window.stockSortDir = (key === 'symbol') ? 'asc' : 'desc';
+            }
+            updateSortIcons();
+            filterStockSignals();
+        };
+
+        function updateSortIcons() {
+            const keys = ['symbol', 'overall_score', 'direction', 'confidence', 'current_price', 'target_price', 'technical_score', 'momentum_score', 'trend_score'];
+            keys.forEach(k => {
+                const icon = document.getElementById('sort-icon-' + k);
+                if (!icon) return;
+                if (k === window.stockSortKey) {
+                    icon.textContent = window.stockSortDir === 'desc' ? ' ▼' : ' ▲';
+                    icon.style.color = '#22c55e';
+                } else {
+                    icon.textContent = ' ⇅';
+                    icon.style.color = '#64748b';
+                }
+            });
+        }
+
+        function renderStockSignals(arr, query = '') {
+            const countEl = document.getElementById('stock-count');
+            const tbody = document.getElementById('stock-opportunities');
+            if (!tbody) return;
+
+            if (countEl) {
+                countEl.textContent = query ? `${arr.length} matching` : `${arr.length} signals`;
+            }
+
+            if (arr.length === 0) {
+                tbody.innerHTML = query 
+                    ? `<tr><td colspan="9" class="empty-msg">No symbols matching "${query}"</td></tr>`
+                    : '<tr><td colspan="9" class="empty-msg">No opportunities found in latest scan</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = arr.map(o => {
+                const targetDisplay = (o.target_price && o.target_pct !== 0) 
+                    ? `${fmtMoney(o.target_price)} <span class="badge ${o.target_pct >= 0 ? 'badge-green' : 'badge-red'}" style="font-size: 11px;">${o.target_pct >= 0 ? '+' : ''}${o.target_pct}%</span>`
+                    : (o.direction === 'neutral' ? '<span style="color: #64748b; font-size: 11px;">N/A (Neutral)</span>' : '<span style="color: #64748b; font-size: 11px;">N/A (Low Conf)</span>');
+
+                return `
+                <tr>
+                    <td><a href="https://finance.yahoo.com/quote/${o.symbol}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: none; font-weight: 700;" title="View ${o.symbol} on Yahoo Finance">${o.symbol} <span style="font-size: 10px; opacity: 0.7;">↗</span></a></td>
+                    <td><span class="badge badge-green">${fmt(o.overall_score)}</span></td>
+                    <td><span class="badge ${o.direction === 'bullish' ? 'badge-green' : 'badge-red'}">${o.direction || '--'}</span></td>
+                    <td><span class="badge badge-blue">${o.confidence || '--'}</span></td>
+                    <td>${o.current_price ? fmtMoney(o.current_price) : '--'}</td>
+                    <td>${targetDisplay}</td>
+                    <td>${fmt(o.technical_score)}</td>
+                    <td>${fmt(o.momentum_score)}</td>
+                    <td>${fmt(o.trend_score)}</td>
+                </tr>
+            `;
+            }).join('');
+        }
+
+        window.filterStockSignals = function() {
+            const input = document.getElementById('stock-search-input');
+            const query = (input ? input.value : '').trim().toUpperCase();
+            if (!window.allStockSignals) return;
+
+            let list = [...window.allStockSignals];
+
+            // Search filter
+            if (query) {
+                list = list.filter(o => o.symbol.toUpperCase().includes(query));
+            }
+
+            // Column sorting
+            const key = window.stockSortKey || 'overall_score';
+            const dir = (window.stockSortDir === 'asc') ? 1 : -1;
+
+            // Rank maps for ordinal categorical sorting
+            const CONFIDENCE_RANK = { 'high': 3, 'medium': 2, 'low': 1 };
+            const DIRECTION_RANK  = { 'bullish': 3, 'neutral': 2, 'bearish': 1 };
+
+            list.sort((a, b) => {
+                let valA = a[key] ?? '';
+                let valB = b[key] ?? '';
+
+                if (key === 'confidence') {
+                    const rA = CONFIDENCE_RANK[String(valA).toLowerCase()] || 0;
+                    const rB = CONFIDENCE_RANK[String(valB).toLowerCase()] || 0;
+                    return (rA - rB) * dir;
+                } else if (key === 'direction') {
+                    const rA = DIRECTION_RANK[String(valA).toLowerCase()] || 0;
+                    const rB = DIRECTION_RANK[String(valB).toLowerCase()] || 0;
+                    return (rA - rB) * dir;
+                } else if (typeof valA === 'string') {
+                    return valA.localeCompare(valB) * dir;
+                } else {
+                    return (valA - valB) * dir;
+                }
+            });
+
+            renderStockSignals(list, query);
+        };
+
+        // Stock opportunities fetch
         fetch('/api/stocks/opportunities').then(r => r.json()).then(data => {
             if (data.error) {
                 document.getElementById('stock-opportunities').innerHTML = `<tr><td colspan="8" class="empty-msg">Demo mode — ${data.error}</td></tr>`;
                 document.getElementById('stock-count').textContent = '0';
                 return;
             }
-            const arr = Array.isArray(data) ? data : (data.opportunities || []);
-            document.getElementById('stock-count').textContent = arr.length + ' signals';
-            if (arr.length === 0) {
-                document.getElementById('stock-opportunities').innerHTML = '<tr><td colspan="8" class="empty-msg">No opportunities found in latest scan</td></tr>';
-                return;
-            }
-            document.getElementById('stock-opportunities').innerHTML = arr.map(o => `
-                <tr>
-                    <td><strong>${o.symbol}</strong></td>
-                    <td><span class="badge badge-green">${fmt(o.overall_score)}</span></td>
-                    <td><span class="badge ${o.direction === 'bullish' ? 'badge-green' : 'badge-red'}">${o.direction || '--'}</span></td>
-                    <td><span class="badge badge-blue">${o.confidence || '--'}</span></td>
-                    <td>${o.current_price ? fmtMoney(o.current_price) : '--'}</td>
-                    <td>${fmt(o.technical_score)}</td>
-                    <td>${fmt(o.momentum_score)}</td>
-                    <td>${fmt(o.trend_score)}</td>
-                </tr>
-            `).join('');
+            window.allStockSignals = Array.isArray(data) ? data : (data.opportunities || []);
+            filterStockSignals();
         }).catch(() => {
             document.getElementById('stock-opportunities').innerHTML = '<tr><td colspan="8" class="empty-msg">Failed to load stock data</td></tr>';
         });
@@ -1062,7 +1172,7 @@
                         }
                         return `
                             <tr>
-                                <td><strong>${pos.symbol}</strong></td>
+                                <td><a href="https://finance.yahoo.com/quote/${pos.symbol}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: none; font-weight: 700;" title="View ${pos.symbol} on Yahoo Finance">${pos.symbol} <span style="font-size: 10px; opacity: 0.7;">↗</span></a></td>
                                 <td>${pos.strategy || '--'}</td>
                                 <td><span class="badge ${sideBadge}">${(pos.side || 'long').toUpperCase()}</span></td>
                                 <td>${pos.quantity}</td>
@@ -1088,7 +1198,7 @@
                         return `
                             <tr>
                                 <td>${formattedDate}</td>
-                                <td><strong>${h.symbol}</strong></td>
+                                <td><a href="https://finance.yahoo.com/quote/${h.symbol}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6; text-decoration: none; font-weight: 700;" title="View ${h.symbol} on Yahoo Finance">${h.symbol} <span style="font-size: 10px; opacity: 0.7;">↗</span></a></td>
                                 <td><span class="badge ${sideBadge}">${(h.side || 'long').toUpperCase()}</span></td>
                                 <td>${fmtMoney(h.entry_price)}</td>
                                 <td>${fmtMoney(h.exit_price)}</td>

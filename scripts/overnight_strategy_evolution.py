@@ -519,18 +519,37 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
     
     training_datasets = {}
     data_source = 'synthetic'
-    
-    # SYMBOLS: matches paper trader watchlist for cross-validation
-    symbols = [
-        'SPY', 'QQQ',                       # Broad market ETFs
-        'AAPL', 'MSFT', 'GOOGL', 'AMZN',   # Tech mega-cap
-        'META',                              # Tech
-        'JPM', 'BAC', 'V', 'MA',            # Financials
-        'JNJ', 'PFE',                        # Healthcare
-        'XOM', 'CVX',                        # Energy
-        'WMT', 'COST', 'HD',                 # Consumer/Retail
-        'KO', 'DIS',                         # Consumer staples + media
-    ]
+
+    # SYMBOLS: load from symbol_clusters.json so new clusters (e.g. semiconductors)
+    # are picked up automatically without editing this script.
+    _cluster_file = Path(__file__).resolve().parent.parent / 'data' / 'symbol_clusters.json'
+    if _cluster_file.exists():
+        import json as _json
+        with open(_cluster_file) as _f:
+            _clusters = _json.load(_f)
+        _seen: set = set()
+        symbols = []
+        for _cluster_data in _clusters.values():
+            for _sym in _cluster_data.get('symbols', []):
+                if _sym not in _seen:
+                    _seen.add(_sym)
+                    symbols.append(_sym)
+        logger.info(f"Loaded {len(symbols)} symbols from symbol_clusters.json")
+    else:
+        # Fallback to original hardcoded list if JSON not found
+        symbols = [
+            'SPY', 'QQQ',
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META',
+            'JPM', 'BAC', 'V', 'MA',
+            'JNJ', 'PFE',
+            'XOM', 'CVX',
+            'WMT', 'COST', 'HD', 'KO', 'DIS',
+        ]
+        logger.warning("symbol_clusters.json not found — using fallback symbol list")
+
+    # Valid real-data sources: live IBKR feed OR disk cache (treated equally —
+    # cached data is real historical bars, not synthetic random-walk data).
+    _REAL_DATA_SOURCES = {'ibkr', 'cache', 'cache_stale'}
 
     # PRIMARY: IBKR TWS when running (real-time SIP data, no pacing issues for backtests).
     try:
@@ -539,16 +558,18 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
         for sym in symbols:
             try:
                 df = client.get_historical_data(sym, days=730, timeframe='1Hour')
-                if df is not None and len(df) >= 50 and df.attrs.get('data_source') == 'ibkr':
+                if df is not None and len(df) >= 50 and df.attrs.get('data_source') in _REAL_DATA_SOURCES:
                     training_datasets[sym] = df
-                    logger.info(f"  IBKR {sym}: {len(df)} 1H bars")
+                    src_tag = df.attrs.get('data_source', '?')
+                    logger.info(f"  {sym}: {len(df)} 1H bars [{src_tag}]")
             except Exception as e:
                 logger.warning(f"  IBKR {sym} failed: {e}")
         if training_datasets:
             data_source = 'ibkr_1h'
-            logger.info(f"Using IBKR 1H data ({len(training_datasets)} symbols)")
+            logger.info(f"Using real 1H data ({len(training_datasets)} symbols)")
     except Exception as e:
         logger.warning(f"IBKR connection failed: {e}")
+
 
     # FALLBACK: yfinance 1H if Alpaca unavailable or failed
     if not training_datasets and _YFINANCE_AVAILABLE:
