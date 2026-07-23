@@ -104,7 +104,7 @@ def get_ibkr_client():
                 import logging
                 logging.getLogger("dashboard").warning("IBKRClient init failed: %s", e)
                 return None
-        elif not _ibkr_client.demo_mode and not _ibkr_client._wrapper.is_connected:
+        elif not _ibkr_client._wrapper.is_connected:
             # Connection dropped — attempt a reconnect in place
             try:
                 _ibkr_client._ensure_connected()
@@ -232,13 +232,26 @@ def get_strategy_lab_stats():
         for name, strategy_func in builtin_strategies.items():
             tournament.register_strategy(name, strategy_func)
         
-        # Create test data for tournament
-        test_data = create_test_data(days=100)
-        round_datasets = [
-            ('Test Data', test_data)
-        ]
+        # Fetch real SPY market data for tournament
+        client = get_ibkr_client()
+        test_data = None
+        if client is not None:
+            try:
+                test_data = client.get_historical_data('SPY', days=100, timeframe='1Day')
+            except Exception:
+                pass
+        if test_data is None or len(test_data) < 20:
+            import yfinance as yf
+            test_data = yf.download('SPY', period='1y', interval='1d', progress=False, auto_adjust=True)
+            if isinstance(test_data.columns, pd.MultiIndex):
+                test_data.columns = [c[0].lower() for c in test_data.columns]
+            else:
+                test_data.columns = [c.lower() for c in test_data.columns]
+            test_data = test_data[['open', 'high', 'low', 'close', 'volume']].dropna()
         
-        # Run tournament with test data
+        round_datasets = [('SPY Real Data', test_data)]
+        
+        # Run tournament with real data
         results = tournament.run_tournament(round_datasets)
         
         return {
@@ -361,7 +374,7 @@ def stocks_portfolio():
         
         # Get TWS Connection status
         client = get_ibkr_client()
-        tws_connected = client is not None and not client.demo_mode
+        tws_connected = client is not None and client._wrapper.is_connected
         
         # If connected to TWS, fetch the live account values and persist them to DB
         if tws_connected:
@@ -371,25 +384,37 @@ def stocks_portfolio():
                 if account_data:
                     cash = float(account_data.get("cash", 0))
                     pm.persist_balance_sync(cash)
-                
-                # 2. Update open positions' price and unrealized P&L from TWS portfolio data
-                remote_positions = client.get_remote_positions()
-                if remote_positions:
-                    db_path = pm.data_dir / 'positions.db'
-                    with sqlite3.connect(db_path) as conn:
-                        for r_pos in remote_positions:
-                            symbol = r_pos.get("symbol")
-                            c_price = float(r_pos.get("current_price", 0))
-                            u_pnl = float(r_pos.get("unrealized_pnl", 0))
-                            if symbol and c_price > 0:
+            except Exception as ace:
+                pass
+
+        # 2. Update open positions' price and unrealized P&L from TWS or Yahoo Finance fallback
+        if client is not None:
+            try:
+                db_path = pm.data_dir / 'positions.db'
+                with sqlite3.connect(db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    open_rows = conn.execute("SELECT symbol, entry_price, quantity, side FROM positions WHERE status = 'open'").fetchall()
+                    for pos in open_rows:
+                        sym = pos['symbol']
+                        try:
+                            quote = client.get_quote(sym)
+                            if quote and quote.last > 0:
+                                c_price = float(quote.last)
+                                entry_p = float(pos['entry_price'])
+                                qty = float(pos['quantity'])
+                                side = pos['side']
+                                u_pnl = (c_price - entry_p) * qty if side == 'long' else (entry_p - c_price) * qty
                                 conn.execute('''
                                     UPDATE positions 
                                     SET current_price = ?, unrealized_pnl = ?, updated_at = CURRENT_TIMESTAMP 
                                     WHERE symbol = ? AND status = 'open'
-                                ''', (c_price, u_pnl, symbol))
+                                ''', (c_price, u_pnl, sym))
+                        except Exception:
+                            pass
             except Exception as se:
                 import logging
-                logging.getLogger("dashboard").warning("Failed to sync broker details live in route: %s", se)
+                logging.getLogger("dashboard").warning("Failed to sync open position prices: %s", se)
+
 
 
         # 1. Get Portfolio State (will use the newly persisted balance if successful)
@@ -479,12 +504,24 @@ def strategy_lab_tournament():
         for name, strategy_func in builtin_strategies.items():
             tournament.register_strategy(name, strategy_func)
         
-        # Create test data for tournament
-        test_data = create_test_data(days=100)
-        round_datasets = [
-            ('Test Data', test_data)
-        ]
-        
+        # Fetch real market data for tournament
+        client = get_ibkr_client()
+        test_data = None
+        if client is not None:
+            try:
+                test_data = client.get_historical_data('SPY', days=100, timeframe='1Day')
+            except Exception:
+                pass
+        if test_data is None or len(test_data) < 20:
+            import yfinance as yf
+            test_data = yf.download('SPY', period='1y', interval='1d', progress=False, auto_adjust=True)
+            if isinstance(test_data.columns, pd.MultiIndex):
+                test_data.columns = [c[0].lower() for c in test_data.columns]
+            else:
+                test_data.columns = [c.lower() for c in test_data.columns]
+            test_data = test_data[['open', 'high', 'low', 'close', 'volume']].dropna()
+
+        round_datasets = [('SPY Real Data', test_data)]
         results = tournament.run_tournament(round_datasets)
         
         # Convert results to JSON-serializable format
@@ -567,9 +604,24 @@ def start_tournament():
         for name, strategy_func in builtin_strategies.items():
             tournament.register_strategy(name, strategy_func)
         
-        # Create test data
-        test_data = create_test_data(days=data_days)
-        round_datasets = [('Test Data', test_data)]
+        # Fetch real data for tournament
+        client = get_ibkr_client()
+        test_data = None
+        if client is not None:
+            try:
+                test_data = client.get_historical_data('SPY', days=data_days, timeframe='1Day')
+            except Exception:
+                pass
+        if test_data is None or len(test_data) < 20:
+            import yfinance as yf
+            test_data = yf.download('SPY', period='2y' if data_days >= 365 else '1y', interval='1d', progress=False, auto_adjust=True)
+            if isinstance(test_data.columns, pd.MultiIndex):
+                test_data.columns = [c[0].lower() for c in test_data.columns]
+            else:
+                test_data.columns = [c.lower() for c in test_data.columns]
+            test_data = test_data[['open', 'high', 'low', 'close', 'volume']].dropna()
+
+        round_datasets = [('SPY Real Data', test_data)]
         
         # Run tournament (blocking but protected by lock)
         results = tournament.run_tournament(round_datasets)
@@ -814,7 +866,7 @@ def emergency_close_all_positions():
         import sqlite3
 
         client = get_ibkr_client()
-        if client is None or client.demo_mode:
+        if client is None or not client._wrapper.is_connected:
             return jsonify({'error': 'IBKR not connected (TWS not running or not logged in)'}), 500
 
         ibkr_positions = client.get_remote_positions()
@@ -867,8 +919,8 @@ def emergency_restore_positions():
         import sqlite3
 
         client = get_ibkr_client()
-        if client is None or client.demo_mode:
-            return jsonify({'error': 'IBKR Client is running in demo mode or TWS is disconnected'}), 500
+        if client is None or not client._wrapper.is_connected:
+            return jsonify({'error': 'IBKR Client is disconnected from TWS'}), 500
 
         ibkr_positions = client.get_remote_positions()
         pm = PositionManager()

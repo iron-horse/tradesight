@@ -471,8 +471,14 @@ class TestPaperTrader:
                  old_time.isoformat(), 'open'))
             conn.commit()
         
-        # Mock Alpaca quote
+        # Mock Alpaca quote and connection
+        self.trader.alpaca._connected = True
+        self.trader.alpaca._wrapper._connected = True
         mock_quote = Mock(); mock_quote.last = 160.0; self.trader.alpaca.get_quote = Mock(return_value=mock_quote)
+        self.trader.alpaca.close_full_position = Mock(return_value={
+            'status': 'filled', 
+            'fill_price': 160.0
+        })
         self.trader.alpaca.place_paper_trade = Mock(return_value={
             'status': 'filled', 
             'fill_price': 160.0

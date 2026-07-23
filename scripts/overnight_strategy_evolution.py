@@ -16,6 +16,13 @@ Schedule: Add to cron: 0 20 * * * cd ~/Projects/TradeSight && python3 scripts/ov
 
 import os
 import sys
+
+# Auto-redirect to local .venv python if running with system python
+_root_dir = Path(__file__).resolve().parent.parent
+_venv_python = _root_dir / ".venv" / "bin" / "python3"
+if _venv_python.exists() and ".venv" not in sys.executable:
+    os.execv(str(_venv_python), [str(_venv_python)] + sys.argv)
+
 import json
 import logging
 from datetime import datetime
@@ -505,13 +512,20 @@ def get_latest_tournament_winner() -> Optional[Dict]:
     return winner
 
 
-def optimize_winner_strategy(winner: Dict) -> Dict:
+def optimize_winner_strategy(winner: Dict, symbols_filter: list = None) -> Dict:
     """
     Use expanded parameter tuning to optimize the tournament winner.
     Tests RSI thresholds, position sizing, stop loss, take profit, and holding period.
+
+    Args:
+        winner:         Tournament winner dict (name, score, base_params).
+        symbols_filter: Optional list of symbols to restrict data fetching and
+                        cluster tuning to.  When None, all clusters/symbols are used.
     """
     
     logger.info(f"Starting expanded parameter optimization of {winner['name']}...")
+    if symbols_filter:
+        logger.info(f"Focused symbols filter: {symbols_filter}")
     
     # Try to fetch REAL market data from Alpaca, fall back to synthetic
     alpaca_key = os.environ.get('ALPACA_API_KEY', '')
@@ -534,7 +548,15 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
                 if _sym not in _seen:
                     _seen.add(_sym)
                     symbols.append(_sym)
-        logger.info(f"Loaded {len(symbols)} symbols from symbol_clusters.json")
+        # Apply caller-supplied filter (e.g. TSLA-only run)
+        if symbols_filter:
+            symbols = [s for s in symbols if s in symbols_filter]
+            if not symbols:
+                # Filter matched nothing in clusters — use the filter list directly
+                symbols = list(symbols_filter)
+            logger.info(f"Filtered to {len(symbols)} symbol(s): {symbols}")
+        else:
+            logger.info(f"Loaded {len(symbols)} symbols from symbol_clusters.json")
     else:
         # Fallback to original hardcoded list if JSON not found
         symbols = [
@@ -545,15 +567,16 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
             'XOM', 'CVX',
             'WMT', 'COST', 'HD', 'KO', 'DIS',
         ]
+        if symbols_filter:
+            symbols = [s for s in symbols if s in symbols_filter] or list(symbols_filter)
         logger.warning("symbol_clusters.json not found — using fallback symbol list")
 
-    # Valid real-data sources: live IBKR feed OR disk cache (treated equally —
-    # cached data is real historical bars, not synthetic random-walk data).
-    _REAL_DATA_SOURCES = {'ibkr', 'cache', 'cache_stale'}
+    # Valid real-data sources: live IBKR feed, yfinance, OR disk cache
+    _REAL_DATA_SOURCES = {'ibkr', 'yfinance', 'cache', 'cache_stale'}
 
     # PRIMARY: IBKR TWS when running (real-time SIP data, no pacing issues for backtests).
     try:
-        logger.info("Fetching 1H bars from IBKR TWS (primary)...")
+        logger.info("Fetching 1H bars from IBKR TWS / Yahoo Finance...")
         client = AlpacaClient(client_id=10)  # connects via IBKR_HOST/IBKR_PORT, client_id=10 to avoid dashboard conflict
         for sym in symbols:
             try:
@@ -563,17 +586,17 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
                     src_tag = df.attrs.get('data_source', '?')
                     logger.info(f"  {sym}: {len(df)} 1H bars [{src_tag}]")
             except Exception as e:
-                logger.warning(f"  IBKR {sym} failed: {e}")
+                logger.warning(f"  {sym} fetch failed: {e}")
         if training_datasets:
             data_source = 'ibkr_1h'
             logger.info(f"Using real 1H data ({len(training_datasets)} symbols)")
     except Exception as e:
-        logger.warning(f"IBKR connection failed: {e}")
+        logger.warning(f"IBKR / Client connection failed: {e}")
 
 
-    # FALLBACK: yfinance 1H if Alpaca unavailable or failed
+    # FALLBACK: direct yfinance 1H if client query failed
     if not training_datasets and _YFINANCE_AVAILABLE:
-        logger.warning("Alpaca unavailable — falling back to Yahoo Finance 1H bars")
+        logger.warning("Falling back to direct Yahoo Finance 1H bars")
         for sym in symbols:
             df = fetch_yfinance_1h(sym)
             if df is not None and len(df) >= 50:
@@ -584,12 +607,8 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
             logger.info(f"Using yfinance 1H data ({len(training_datasets)} symbols, strategy designed for 1H)")
 
     if not training_datasets:
-        logger.warning("No market data from any source — using synthetic")
-    
-    # Fallback to synthetic if no real data
-    if not training_datasets:
-        training_datasets['SYNTHETIC'] = create_test_data(days=500)
-        logger.info(f"Created synthetic training data: {len(training_datasets['SYNTHETIC'])} bars")
+        logger.error("No real market data available from TWS or Yahoo Finance.")
+        sys.exit("Error: Cannot run strategy evolution without real market data from TWS or Yahoo Finance.")
     
     # Use SPY as primary (broadest market), or first available
     primary_symbol = 'SPY' if 'SPY' in training_datasets else list(training_datasets.keys())[0]
@@ -684,6 +703,10 @@ def optimize_winner_strategy(winner: Dict) -> Dict:
                 cluster_updated = False
                 for cluster_name, cluster_data in clusters.items():
                     cluster_symbols = cluster_data.get('symbols', [])
+                    # In focused mode: skip clusters that don't overlap the filter
+                    if symbols_filter and not any(s in symbols_filter for s in cluster_symbols):
+                        logger.info(f"  Cluster '{cluster_name}': skipped (not in focused symbol filter)")
+                        continue
                     cluster_symbols_avail = [s for s in cluster_symbols if s in training_datasets]
                     
                     if not cluster_symbols_avail:
@@ -887,10 +910,21 @@ def print_summary(results: Dict):
 
 
 def main():
-    """Main overnight optimization routine"""
+    """Main overnight optimization routine.
+
+    Usage:
+        python3 overnight_strategy_evolution.py              # full run — all clusters
+        python3 overnight_strategy_evolution.py TSLA         # focused: TSLA only
+        python3 overnight_strategy_evolution.py TSLA NVDA    # focused: 2-symbol pool
+    """
     logger.info("="*75)
     logger.info("🌙 OVERNIGHT STRATEGY OPTIMIZATION v2 - STARTING")
     logger.info("="*75)
+
+    # Parse CLI args: any non-flag args are treated as symbol names
+    _focused_symbols = [a.upper() for a in sys.argv[1:] if not a.startswith('-')] or None
+    if _focused_symbols:
+        logger.info(f"🎯 Focused mode: restricting run to {_focused_symbols}")
     
     try:
         # --- Step 0: Run nightly strategy tournament ---
@@ -902,7 +936,7 @@ def main():
             from automation.strategy_automation import StrategyAutomation
             _auto = StrategyAutomation()
             _tsid = "nightly_" + _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-            _tres = _auto.run_tournament_session(_tsid)
+            _tres = _auto.run_tournament_session(_tsid, symbols=_focused_symbols)
             _auto.store_session_results(_tres)
             if not _tres.get("error"):
                 _src = _tres.get("data_source", "unknown")
@@ -923,7 +957,7 @@ def main():
             logger.error("No tournament winner found")
             return False
         
-        results = optimize_winner_strategy(winner)
+        results = optimize_winner_strategy(winner, symbols_filter=_focused_symbols)
         # Champion/Challenger evaluation
         if _CHAMPION_AVAILABLE and _FEEDBACK_AVAILABLE:
             try:

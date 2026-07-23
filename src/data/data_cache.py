@@ -156,8 +156,11 @@ class HistoricalDataCache:
         return None
 
     def put(self, symbol: str, days: int, timeframe: str, df: pd.DataFrame) -> None:
-        """Persist *df* to the cache.  Silently ignores write errors."""
+        """Persist *df* to the cache. Silently ignores write errors."""
         if df is None or df.empty:
+            return
+        if df.attrs.get("data_source") in ("demo_mode", "demo_fallback", "synthetic"):
+            logger.debug("Cache WRITE SKIPPED for %s — synthetic/demo data forbidden", symbol)
             return
         path = self._path(symbol, days, timeframe)
         path.parent.mkdir(parents=True, exist_ok=True)

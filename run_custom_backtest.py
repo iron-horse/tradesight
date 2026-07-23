@@ -24,9 +24,8 @@ from strategy_lab.backtest import BacktestEngine
 def run_qqq_backtest():
     print("Connecting to TWS...")
     client = IBKRClient(client_id=11)
-    if client.demo_mode:
-        print("Error: TWS is not running or unreachable. Cannot run backtest on real TWS data.")
-        return
+    if not client._wrapper.is_connected:
+        print("Notice: TWS is not running — fetching historical data via Yahoo Finance fallback.")
 
     print("Fetching 1 year of QQQ 1H bars from TWS...")
     df = client.get_historical_data("QQQ", days=365, timeframe="1Hour")

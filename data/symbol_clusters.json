@@ -9,11 +9,11 @@
       "QQQ"
     ],
     "default_params": {
-      "oversold": 30,
-      "overbought": 72,
+      "oversold": 35,
+      "overbought": 75,
       "position_size": 0.25,
-      "stop_loss_pct": 0.05,
-      "take_profit_pct": 0.08,
+      "stop_loss_pct": 0.08,
+      "take_profit_pct": 0.12,
       "max_holding_bars": 0
     }
   },
@@ -25,11 +25,11 @@
       "MA"
     ],
     "default_params": {
-      "oversold": 28,
-      "overbought": 72,
+      "oversold": 33,
+      "overbought": 75,
       "position_size": 0.25,
       "stop_loss_pct": 0.03,
-      "take_profit_pct": 0.05,
+      "take_profit_pct": 0.12,
       "max_holding_bars": 0
     }
   },
@@ -42,8 +42,8 @@
       "oversold": 33,
       "overbought": 75,
       "position_size": 0.25,
-      "stop_loss_pct": 0.03,
-      "take_profit_pct": 0.05,
+      "stop_loss_pct": 0.08,
+      "take_profit_pct": 0.12,
       "max_holding_bars": 0
     }
   },
@@ -53,10 +53,10 @@
       "CVX"
     ],
     "default_params": {
-      "oversold": 33,
+      "oversold": 28,
       "overbought": 78,
       "position_size": 0.25,
-      "stop_loss_pct": 0.03,
+      "stop_loss_pct": 0.08,
       "take_profit_pct": 0.12,
       "max_holding_bars": 0
     }
@@ -70,11 +70,11 @@
       "DIS"
     ],
     "default_params": {
-      "oversold": 30,
+      "oversold": 35,
       "overbought": 72,
       "position_size": 0.25,
-      "stop_loss_pct": 0.08,
-      "take_profit_pct": 0.12,
+      "stop_loss_pct": 0.05,
+      "take_profit_pct": 0.08,
       "max_holding_bars": 0
     }
   },
@@ -83,11 +83,11 @@
       "SPY"
     ],
     "default_params": {
-      "oversold": 30,
+      "oversold": 25,
       "overbought": 68,
       "position_size": 0.25,
-      "stop_loss_pct": 0.03,
-      "take_profit_pct": 0.05,
+      "stop_loss_pct": 0.05,
+      "take_profit_pct": 0.08,
       "max_holding_bars": 0
     }
   },
@@ -101,11 +101,11 @@
       "ALAB"
     ],
     "default_params": {
-      "oversold": 35,
+      "oversold": 33,
       "overbought": 78,
       "position_size": 0.25,
-      "stop_loss_pct": 0.08,
-      "take_profit_pct": 0.12,
+      "stop_loss_pct": 0.05,
+      "take_profit_pct": 0.08,
       "max_holding_bars": 0
     }
   },
@@ -115,8 +115,21 @@
       "DRAM"
     ],
     "default_params": {
-      "oversold": 33,
+      "oversold": 35,
       "overbought": 78,
+      "position_size": 0.25,
+      "stop_loss_pct": 0.03,
+      "take_profit_pct": 0.12,
+      "max_holding_bars": 0
+    }
+  },
+  "high_beta": {
+    "symbols": [
+      "TSLA"
+    ],
+    "default_params": {
+      "oversold": 28,
+      "overbought": 72,
       "position_size": 0.25,
       "stop_loss_pct": 0.08,
       "take_profit_pct": 0.12,

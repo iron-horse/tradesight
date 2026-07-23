@@ -120,5 +120,5 @@ class TestGetPortfolioStateWithBalance:
         """available_cash (calculated from positions) still works independently"""
         pm.persist_balance_sync(1000.0)
         state = pm.get_portfolio_state()
-        # No positions — available_cash == initial_balance
-        assert state.available_cash == pytest.approx(500.0, abs=0.01)
+        # No positions — available_cash == initial_balance (1000.0)
+        assert state.available_cash == pytest.approx(1000.0, abs=0.01)

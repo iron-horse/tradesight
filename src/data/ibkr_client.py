@@ -49,7 +49,7 @@ try:
     _CACHE_AVAILABLE = True
 except ImportError:
     try:
-        from data_cache import HistoricalDataCache as _HistoricalDataCache
+        from .data_cache import HistoricalDataCache as _HistoricalDataCache
         _CACHE_AVAILABLE = True
     except ImportError:
         _CACHE_AVAILABLE = False
@@ -250,7 +250,9 @@ class _IBKRSyncWrapper:
 
     @property
     def is_connected(self) -> bool:
-        return self._connected and self._ib is not None and self._ib.isConnected()
+        if self._ib is None:
+            return self._connected
+        return self._connected and self._ib.isConnected()
 
 
 # ---------------------------------------------------------------------------
@@ -297,24 +299,7 @@ class IBKRClient:
 
         self._wrapper = _IBKRSyncWrapper(self.host, self.port, self.client_id)
 
-        # Check if demo mode is forced via config (skips TWS connection entirely)
-        _force_demo = False
-        try:
-            import src.config as _cfg
-            _force_demo = getattr(_cfg, "IBKR_DEMO_MODE", False)
-        except ImportError:
-            try:
-                import config as _cfg
-                _force_demo = getattr(_cfg, "IBKR_DEMO_MODE", False)
-            except ImportError:
-                pass
-
-        if _force_demo:
-            logger.info("[IBKRClient] IBKR_DEMO_MODE=True — skipping TWS connection, using Yahoo Finance / demo data.")
-            self._connected = False
-        else:
-            self._connected = self._wrapper.connect()
-        self.demo_mode = not self._connected
+        self._connected = self._wrapper.connect()
 
         try:
             if _INDICATORS_AVAILABLE:
@@ -323,11 +308,9 @@ class IBKRClient:
                 self.indicators = None
         except Exception:
             self.indicators = None
-        self._demo_fallback_count = 0
         self._last_request_time = 0.0
 
         # Disk cache — stores DataFrames as Parquet files in data/cache/
-        # Falls back gracefully if the module is unavailable.
         if _CACHE_AVAILABLE:
             try:
                 _base = _src_dir.replace('/src', '') if '/src' in _src_dir else _src_dir
@@ -339,13 +322,10 @@ class IBKRClient:
         else:
             self._cache = None
 
-        if self.demo_mode:
-            logger.warning(
-                "[IBKRClient] TWS unreachable — running in DEMO MODE. "
-                "Start TWS, log into a Paper Trading account, then restart TradeSight."
-            )
-        else:
+        if self._connected:
             logger.info("[IBKRClient] Live connection to TWS established.")
+        else:
+            logger.info("[IBKRClient] TWS not connected — queries will use Yahoo Finance fallback for market data.")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -356,7 +336,6 @@ class IBKRClient:
             return True
         logger.info("[IBKRClient] Attempting reconnect to TWS...")
         self._connected = self._wrapper.connect()
-        self.demo_mode = not self._connected
         return self._connected
 
     def _pace(self):
@@ -369,6 +348,36 @@ class IBKRClient:
         from ib_async import Stock
         return Stock(symbol, "SMART", "USD")
 
+    def _fetch_yfinance_historical(self, symbol: str, days: int, timeframe: str = "1Day") -> Optional[pd.DataFrame]:
+        """Fetch real historical bars from Yahoo Finance as a TWS fallback."""
+        try:
+            import yfinance as yf
+            import warnings
+            interval_map = {"1Day": "1d", "1Hour": "1h", "30Min": "30m", "15Min": "15m", "5Min": "5m", "1Min": "1m"}
+            interval = interval_map.get(timeframe, "1d")
+            period = '2y' if days >= 365 else ('1y' if days >= 30 else '30d')
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=True)
+            if df is not None and len(df) >= 10:
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = [c[0].lower() for c in df.columns]
+                else:
+                    df.columns = [c.lower() for c in df.columns]
+                req_cols = [c for c in ['open', 'high', 'low', 'close', 'volume'] if c in df.columns]
+                if len(req_cols) == 5:
+                    df = df[['open', 'high', 'low', 'close', 'volume']].dropna()
+                    df.index = pd.to_datetime(df.index)
+                    cutoff = df.index[-1] - pd.Timedelta(days=days)
+                    df = df[df.index >= cutoff]
+                    if len(df) >= 5:
+                        df.attrs["data_source"] = "yfinance"
+                        logger.info("[IBKRClient] Fetched %d real bars for %s via Yahoo Finance", len(df), symbol)
+                        return df
+        except Exception as e:
+            logger.warning("[IBKRClient] Yahoo Finance historical fetch failed for %s: %s", symbol, e)
+        return None
+
     # ------------------------------------------------------------------
     # Historical data
     # ------------------------------------------------------------------
@@ -380,104 +389,72 @@ class IBKRClient:
         timeframe: str = "1Day",
         end_date: str = "",
     ) -> pd.DataFrame:
-        # ------------------------------------------------------------------
-        # Cache lookup — skipped for end_date requests (precise backfills
-        # must always fetch exact bars from TWS, not a cached snapshot).
-        # ------------------------------------------------------------------
         use_cache = self._cache is not None and not end_date
         if use_cache:
             cached = self._cache.get(symbol, days, timeframe)
-            if cached is not None:
+            if cached is not None and cached.attrs.get("data_source") not in ("demo_mode", "demo_fallback", "synthetic"):
                 logger.debug(
                     "[IBKRClient] Cache HIT %s/%s/%dd (%d bars)",
                     symbol, timeframe, days, len(cached),
                 )
                 return cached
 
-        # ------------------------------------------------------------------
-        # Demo / disconnected path
-        # ------------------------------------------------------------------
-        if self.demo_mode or not self._ensure_connected():
-            # Prefer stale cache over synthetic random-walk data
+        # 1) Try TWS fetch if connected
+        if self._ensure_connected():
+            try:
+                bar_size = _TIMEFRAME_MAP.get(timeframe, "1 day")
+                duration = _duration_str(days, bar_size)
+                self._pace()
+                contract = self._make_contract(symbol)
+                bars = self._wrapper.run_async(
+                    self._wrapper.ib.reqHistoricalDataAsync(
+                        contract,
+                        endDateTime=end_date,
+                        durationStr=duration,
+                        barSizeSetting=bar_size,
+                        whatToShow="TRADES",
+                        useRTH=True,
+                        formatDate=1,
+                    ),
+                    timeout=45,
+                )
+                if bars:
+                    rows = []
+                    for b in bars:
+                        rows.append({
+                            "timestamp": pd.to_datetime(b.date),
+                            "open":   float(b.open),
+                            "high":   float(b.high),
+                            "low":    float(b.low),
+                            "close":  float(b.close),
+                            "volume": int(b.volume),
+                        })
+                    df = pd.DataFrame(rows).set_index("timestamp")
+                    df.sort_index(inplace=True)
+                    max_rows = days * _BARS_PER_DAY.get(bar_size, 1)
+                    df = df.tail(max_rows)
+                    df.attrs["data_source"] = "ibkr"
+                    if use_cache:
+                        self._cache.put(symbol, days, timeframe, df)
+                    return df
+            except Exception as e:
+                logger.warning("[IBKRClient] TWS get_historical_data(%s) failed: %s — falling back to Yahoo Finance", symbol, e)
+
+        # 2) Fallback to Yahoo Finance real data
+        yf_df = self._fetch_yfinance_historical(symbol, days, timeframe)
+        if yf_df is not None:
             if use_cache:
-                stale = self._cache.get(symbol, days, timeframe, allow_stale=True)
-                if stale is not None:
-                    logger.info(
-                        "[IBKRClient] TWS unavailable — serving stale cache for %s (%d bars)",
-                        symbol, len(stale),
-                    )
-                    return stale
-            df = self._generate_demo_data(symbol, days)
-            df.attrs["data_source"] = "demo_mode"
-            return df
+                self._cache.put(symbol, days, timeframe, yf_df)
+            return yf_df
 
-        # ------------------------------------------------------------------
-        # Live TWS fetch
-        # ------------------------------------------------------------------
-        bar_size = _TIMEFRAME_MAP.get(timeframe, "1 day")
-        duration = _duration_str(days, bar_size)
+        # 3) Fallback to stale cache if real data
+        if use_cache:
+            stale = self._cache.get(symbol, days, timeframe, allow_stale=True)
+            if stale is not None and stale.attrs.get("data_source") not in ("demo_mode", "demo_fallback", "synthetic"):
+                logger.info("[IBKRClient] Serving stale real cache for %s (%d bars)", symbol, len(stale))
+                return stale
 
-        try:
-            self._pace()
-            contract = self._make_contract(symbol)
-            bars = self._wrapper.run_async(
-                self._wrapper.ib.reqHistoricalDataAsync(
-                    contract,
-                    endDateTime=end_date,
-                    durationStr=duration,
-                    barSizeSetting=bar_size,
-                    whatToShow="TRADES",
-                    useRTH=True,
-                    formatDate=1,
-                ),
-                timeout=45,
-            )
-            if not bars:
-                raise ValueError(f"No historical bars returned for {symbol}")
-
-            rows = []
-            for b in bars:
-                rows.append({
-                    "timestamp": pd.to_datetime(b.date),
-                    "open":   float(b.open),
-                    "high":   float(b.high),
-                    "low":    float(b.low),
-                    "close":  float(b.close),
-                    "volume": int(b.volume),
-                })
-
-            df = pd.DataFrame(rows).set_index("timestamp")
-            df.sort_index(inplace=True)
-            max_rows = days * _BARS_PER_DAY.get(bar_size, 1)
-            df = df.tail(max_rows)
-            df.attrs["data_source"] = "ibkr"
-
-            # Persist to cache so next run is instant
-            if use_cache:
-                self._cache.put(symbol, days, timeframe, df)
-
-            return df
-
-        except Exception as e:
-            self._demo_fallback_count += 1
-            logger.warning(
-                "[IBKRClient] get_historical_data(%s) failed: %s — "
-                "trying stale cache, then DEMO data (fallback #%d)",
-                symbol, e, self._demo_fallback_count,
-            )
-            # Prefer stale cache over synthetic random-walk data
-            if use_cache:
-                stale = self._cache.get(symbol, days, timeframe, allow_stale=True)
-                if stale is not None:
-                    logger.info(
-                        "[IBKRClient] Serving stale cache for %s (%d bars) after TWS error",
-                        symbol, len(stale),
-                    )
-                    return stale
-            df = self._generate_demo_data(symbol, days)
-            df.attrs["data_source"] = "demo_fallback"
-            df.attrs["fallback_reason"] = str(e)
-            return df
+        raise RuntimeError(f"Could not fetch real historical market data for '{symbol}' from TWS or Yahoo Finance")
 
     # ------------------------------------------------------------------
     # Real-time quote
@@ -485,10 +462,10 @@ class IBKRClient:
 
     def get_quote(self, symbol: str) -> Optional[StockQuote]:
         try:
-            import src.config as tradesight_config
-            force_yahoo = getattr(tradesight_config, "FORCE_YAHOO_QUOTES", True)
+            import config as tradesight_config
         except ImportError:
-            force_yahoo = True
+            tradesight_config = None
+        force_yahoo = getattr(tradesight_config, "FORCE_YAHOO_QUOTES", True) if tradesight_config else True
 
         if force_yahoo:
             logger.info("[IBKRClient] get_quote(%s): FORCE_YAHOO_QUOTES is enabled — prioritizing Yahoo Finance query...", symbol)
@@ -497,76 +474,58 @@ class IBKRClient:
                 return yf_quote
             logger.warning("[IBKRClient] get_quote(%s): Forced Yahoo Finance query failed — falling back to TWS query...", symbol)
 
-        if self.demo_mode or not self._ensure_connected():
-            return self._generate_demo_quote(symbol)
+        if self._ensure_connected():
+            try:
+                contract = self._make_contract(symbol)
+                async def _qualify_and_tick(c):
+                    qualified = await self._wrapper.ib.qualifyContractsAsync(c)
+                    if not qualified or qualified[0] is None:
+                        return None
+                    self._wrapper.ib.reqMarketDataType(3)
+                    tickers = await self._wrapper.ib.reqTickersAsync(qualified[0])
+                    if not tickers:
+                        return None
+                    ticker = tickers[0]
+                    import asyncio
+                    for _ in range(10):
+                        last_price = getattr(ticker, 'last', 0.0)
+                        bid = getattr(ticker, 'bid', 0.0)
+                        ask = getattr(ticker, 'ask', 0.0)
+                        if (last_price == last_price and last_price > 0) or \
+                           (bid == bid and bid > 0) or \
+                           (ask == ask and ask > 0):
+                            break
+                        await asyncio.sleep(0.2)
+                    return ticker
 
-        try:
-            contract = self._make_contract(symbol)
-            # Qualify contract to populate conId — required by reqTickersAsync
-            async def _qualify_and_tick(c):
-                qualified = await self._wrapper.ib.qualifyContractsAsync(c)
-                if not qualified or qualified[0] is None:
-                    return None
-                # Request delayed market data (type 3 = delayed, free, no subscription needed)
-                self._wrapper.ib.reqMarketDataType(3)
-                tickers = await self._wrapper.ib.reqTickersAsync(qualified[0])
-                if not tickers:
-                    return None
-                ticker = tickers[0]
-                # Wait up to 2 seconds for price data to arrive from TWS
-                import asyncio
-                for _ in range(10):
-                    last_price = getattr(ticker, 'last', 0.0)
-                    bid = getattr(ticker, 'bid', 0.0)
-                    ask = getattr(ticker, 'ask', 0.0)
-                    # Check if we got a valid price (non-NaN and > 0)
-                    if (last_price == last_price and last_price > 0) or \
-                       (bid == bid and bid > 0) or \
-                       (ask == ask and ask > 0):
-                        break
-                    await asyncio.sleep(0.2)
-                return ticker
+                t = self._wrapper.run_async(_qualify_and_tick(contract), timeout=15)
+                if t:
+                    def _safe_float(val):
+                        try:
+                            f = float(val)
+                            return f if f == f else 0.0
+                        except (TypeError, ValueError):
+                            return 0.0
 
-            t = self._wrapper.run_async(_qualify_and_tick(contract), timeout=15)
-            if not t:
-                return self._generate_demo_quote(symbol)
-            # Guard against NaN values returned when market data subscription is missing
-            def _safe_float(val):
-                try:
-                    f = float(val)
-                    return f if f == f else 0.0  # NaN check
-                except (TypeError, ValueError):
-                    return 0.0
+                    bid   = _safe_float(t.bid)   if _safe_float(t.bid)   > 0 else 0.0
+                    ask   = _safe_float(t.ask)   if _safe_float(t.ask)   > 0 else 0.0
+                    last  = _safe_float(t.last)  if _safe_float(t.last)  > 0 else (ask or bid or 0.0)
+                    vol   = int(_safe_float(t.volume)) if t.volume else 0
+                    close = _safe_float(t.close) if _safe_float(t.close) > 0 else last
+                    change     = round(last - close, 4) if close else 0.0
+                    change_pct = round(change / close * 100, 4) if close else 0.0
 
-            bid   = _safe_float(t.bid)   if _safe_float(t.bid)   > 0 else 0.0
-            ask   = _safe_float(t.ask)   if _safe_float(t.ask)   > 0 else 0.0
-            last  = _safe_float(t.last)  if _safe_float(t.last)  > 0 else (ask or bid or 0.0)
-            vol   = int(_safe_float(t.volume)) if t.volume else 0
-            close = _safe_float(t.close) if _safe_float(t.close) > 0 else last
-            change     = round(last - close, 4) if close else 0.0
-            change_pct = round(change / close * 100, 4) if close else 0.0
+                    if last > 0:
+                        return StockQuote(
+                            symbol=symbol, timestamp=datetime.now(),
+                            bid=bid, ask=ask, last=last, volume=vol,
+                            change=change, change_pct=change_pct,
+                        )
+            except Exception as e:
+                logger.warning("[IBKRClient] TWS get_quote(%s) failed: %s", symbol, e)
 
-            if last <= 0:
-                logger.info("[IBKRClient] get_quote(%s): got zero/NaN price from TWS — attempting Yahoo Finance fallback...", symbol)
-                yf_quote = self._get_yahoo_quote_fallback(symbol)
-                if yf_quote:
-                    return yf_quote
-                logger.warning("[IBKRClient] get_quote(%s): Yahoo Finance fallback failed, using demo fallback", symbol)
-                return self._generate_demo_quote(symbol)
-
-            return StockQuote(
-                symbol=symbol,
-                timestamp=datetime.now(),
-                bid=bid, ask=ask, last=last, volume=vol,
-                change=change, change_pct=change_pct,
-            )
-        except Exception as e:
-            logger.warning("[IBKRClient] get_quote(%s) failed: %s", symbol, e)
-            logger.info("[IBKRClient] get_quote(%s): attempting Yahoo Finance fallback after error...", symbol)
-            yf_quote = self._get_yahoo_quote_fallback(symbol)
-            if yf_quote:
-                return yf_quote
-            return self._generate_demo_quote(symbol)
+        # Fall back to Yahoo Finance live quote query
+        return self._get_yahoo_quote_fallback(symbol)
 
     def _get_yahoo_quote_fallback(self, symbol: str) -> Optional[StockQuote]:
         import urllib.request
@@ -613,19 +572,10 @@ class IBKRClient:
         side: str,
         order_type: str = "market",
     ) -> Dict:
-        # IBKR requires integer shares for most US equities
+        if not self._ensure_connected():
+            return {"error": "TWS is disconnected. Live/paper orders require TWS connection."}
+
         qty_int = max(1, math.floor(float(quantity)))
-
-        if self.demo_mode or not self._ensure_connected():
-            quote = self.get_quote(symbol)
-            fill_price = quote.last if quote else 100.0
-            return {
-                "order_id": f"demo_{int(time.time())}",
-                "symbol": symbol, "quantity": qty_int, "side": side,
-                "status": "filled", "fill_price": fill_price,
-                "fill_time": datetime.now().isoformat(), "demo_mode": True,
-            }
-
         try:
             from ib_async import MarketOrder
             contract = self._make_contract(symbol)
@@ -655,10 +605,8 @@ class IBKRClient:
             return {"error": str(e)}
 
     def close_full_position(self, symbol: str) -> Dict:
-        if self.demo_mode or not self._ensure_connected():
-            quote = self.get_quote(symbol)
-            fill_price = quote.last if quote else 100.0
-            return {"status": "closed", "fill_price": fill_price, "symbol": symbol, "demo_mode": True}
+        if not self._ensure_connected():
+            return {"error": "TWS is disconnected. Closing positions requires TWS connection."}
 
         try:
             from ib_async import MarketOrder
@@ -698,18 +646,13 @@ class IBKRClient:
     # ------------------------------------------------------------------
 
     def get_account(self) -> Dict:
-        if self.demo_mode or not self._ensure_connected():
+        if not self._ensure_connected():
             return {
-                "cash": "500.00", "buying_power": "500.00",
-                "equity": "500.00", "portfolio_value": "500.00",
-                "long_market_value": "0", "status": "ACTIVE",
+                "cash": "0.00", "buying_power": "0.00",
+                "equity": "0.00", "portfolio_value": "0.00",
+                "long_market_value": "0", "status": "DISCONNECTED",
             }
         try:
-            # PRIMARY: $LEDGER tags with currency=USD give exact USD balances.
-            # These are the correct source for USD position sizing.
-            # $LEDGER-CashBalance        = USD cash available
-            # $LEDGER-NetLiquidationByCurrency = total USD equity
-            # $LEDGER-StockMarketValue   = USD value of stock positions
             cash = 0.0
             net_liq = 0.0
             stock_market_value = 0.0
@@ -739,7 +682,6 @@ class IBKRClient:
                     except (ValueError, TypeError):
                         pass
 
-            # FALLBACK: sum portfolio() market values (always in USD for US stocks)
             if stock_market_value == 0:
                 stock_market_value = sum(
                     float(p.marketValue) for p in self._wrapper.ib.portfolio()
@@ -747,15 +689,8 @@ class IBKRClient:
                     and getattr(p.contract, "currency", "USD") == "USD"
                 )
 
-            # Equity = net liquidation if available, else cash + positions
             equity = net_liq if net_liq > 0 else (cash + stock_market_value)
-            # Buying power ≈ 4x cash for margin accounts; use cash as conservative estimate
             buying_power = cash
-
-            logger.debug(
-                "[IBKRClient] get_account (USD): cash=%.2f net_liq=%.2f stock_mv=%.2f",
-                cash, net_liq, stock_market_value
-            )
 
             return {
                 "cash": str(cash),
@@ -770,17 +705,14 @@ class IBKRClient:
             return {}
 
     def get_remote_positions(self) -> List[Dict]:
-        if self.demo_mode or not self._ensure_connected():
+        if not self._ensure_connected():
             return []
         try:
-            # Use TWS portfolio() updates to query live market value, current price, and unrealized P&L
             portfolio_items = self._wrapper.ib.portfolio()
             result = []
             for p in (portfolio_items or []):
-                # Only process US equity (Stock) positions — skip Forex, Futures, Options etc.
                 contract_type = getattr(p.contract, 'secType', '') or type(p.contract).__name__
                 if contract_type not in ('STK', 'Stock', ''):
-                    logger.debug("[IBKRClient] Skipping non-equity position: %s (%s)", p.contract.symbol, contract_type)
                     continue
                 sym = p.contract.symbol
                 qty = float(p.position)
@@ -806,115 +738,6 @@ class IBKRClient:
         except Exception as e:
             logger.error("[IBKRClient] get_remote_positions() failed: %s", e)
             return []
-
-    def get_paper_positions(self) -> List[PaperPosition]:
-        raw = self.get_remote_positions()
-        result = []
-        for pos in raw:
-            try:
-                qty = float(pos["qty"])
-                result.append(PaperPosition(
-                    symbol=pos["symbol"], quantity=int(abs(qty)),
-                    side=pos.get("side", "long"),
-                    avg_entry_price=float(pos["avg_entry_price"]),
-                    current_price=float(pos["current_price"]),
-                    unrealized_pnl=float(pos.get("unrealized_pnl", 0.0)),
-                    market_value=float(pos["market_value"]),
-                ))
-            except Exception:
-                continue
-        return result
-
-    def scan_sp500(self, min_volume: int = 1_000_000) -> List[Dict]:
-        opportunities = []
-        print("Scanning stocks via IBKR...")
-        for i, symbol in enumerate(self.SP500_SYMBOLS):
-            try:
-                print(f"  Analyzing {symbol} ({i+1}/{len(self.SP500_SYMBOLS)})...")
-                data = self.get_historical_data(symbol, days=100)
-                if len(data) < 50:
-                    continue
-                avg_volume = data["volume"].tail(20).mean()
-                if avg_volume < min_volume:
-                    continue
-
-                indicators = {}
-                confluence = 0
-                rsi = 50
-                macd = 0
-                if self.indicators is not None:
-                    indicators = self.indicators.calculate_all(data)
-                    confluence = indicators.get("confluence_score", 0)
-                    rsi = indicators.get("indicators", {}).get("rsi", 50)
-                    macd = indicators.get("indicators", {}).get("macd", 0)
-
-                score = confluence * 100
-                if rsi < 30:
-                    score += 20
-                elif rsi > 70:
-                    score += 15
-                if abs(macd) > 1:
-                    score += 10
-                opportunities.append({
-                    "symbol": symbol, "score": min(100, score),
-                    "current_price": float(data["close"].iloc[-1]),
-                    "volume": int(avg_volume), "rsi": float(rsi),
-                    "confluence": float(confluence),
-                    "signals": self._extract_signals(indicators),
-                })
-            except Exception as e:
-                print(f"  Error analyzing {symbol}: {e}")
-        opportunities.sort(key=lambda x: x["score"], reverse=True)
-        print(f"Found {len(opportunities)} opportunities")
-        return opportunities
-
-    # ------------------------------------------------------------------
-    # Demo / fallback data  (identical to AlpacaClient)
-    # ------------------------------------------------------------------
-
-    def _generate_demo_data(self, symbol: str, days: int) -> pd.DataFrame:
-        import zlib
-        symbol_seed = zlib.adler32(symbol.encode('utf-8'))
-        np.random.seed((symbol_seed + int(datetime.now().strftime("%Y%m%d"))) % 2147483647)
-        dates = pd.date_range(end=datetime.now(), periods=days, freq="D")
-        base_prices = {
-            'AAPL': 222, 'MSFT': 380, 'AMZN': 210, 'GOOGL': 175, 'GOOG': 175,
-            'TSLA': 260, 'AMD': 105, 'META': 520, 'PYPL': 68,  'NVDA': 900,
-            'QCOM': 165, 'INTC': 25,  'IBM':  230, 'ORCL': 130, 'CSCO': 52,
-            'MU':   98,  'TXN': 185,  'ADBE': 450, 'HON':  210, 'GE':   175,
-            'JPM':  230, 'BAC': 46,   'V':    300, 'MA':   510, 'KO':   72,
-            'PEP':  165, 'WMT': 90,   'COST': 935, 'HD':   385, 'NKE':  75,
-            'DIS':  112, 'XOM': 115,  'CVX':  155, 'BA':   170, 'PFE':  28,
-            'BMY':  58,  'JNJ': 158,  'MRK':  125, 'ABT':  124, 'VZ':   42, 'T': 22,
-        }
-        base_price = base_prices.get(symbol, 100)
-        returns = np.random.normal(0.001, 0.02, days)
-        prices = [base_price]
-        for ret in returns[1:]:
-            prices.append(prices[-1] * (1 + ret))
-        data = []
-        for date, close in zip(dates, prices):
-            o = close + np.random.normal(0, close * 0.005)
-            h = max(o, close) + np.random.uniform(0, close * 0.01)
-            l = min(o, close) - np.random.uniform(0, close * 0.01)
-            data.append({
-                "open": round(o, 2), "high": round(h, 2),
-                "low": round(l, 2), "close": round(close, 2),
-                "volume": int(np.random.uniform(1_000_000, 10_000_000)),
-            })
-        return pd.DataFrame(data, index=dates)
-
-    def _generate_demo_quote(self, symbol: str) -> StockQuote:
-        data = self._generate_demo_data(symbol, 1)
-        last_price = float(data["close"].iloc[-1])
-        return StockQuote(
-            symbol=symbol, timestamp=datetime.now(),
-            bid=round(last_price - 0.01, 2), ask=round(last_price + 0.01, 2),
-            last=last_price,
-            volume=int(np.random.uniform(100_000, 1_000_000)),
-            change=round(np.random.uniform(-5, 5), 2),
-            change_pct=round(np.random.uniform(-3, 3), 2),
-        )
 
     def _extract_signals(self, indicators: Dict) -> List[str]:
         signals = []

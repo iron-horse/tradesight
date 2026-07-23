@@ -14,8 +14,15 @@ Simulates exactly how the Paper Trader would behave in real-life:
 
 import sys
 import os
-import json
 from pathlib import Path
+
+# Auto-redirect to local .venv python if running with system python
+_root_dir = Path(__file__).resolve().parent
+_venv_python = _root_dir / ".venv" / "bin" / "python3"
+if _venv_python.exists() and ".venv" not in sys.executable:
+    os.execv(str(_venv_python), [str(_venv_python)] + sys.argv)
+
+import json
 import pandas as pd
 import numpy as np
 
@@ -31,15 +38,22 @@ from data.ibkr_client import IBKRClient
 # To test the last 1 year (intraday): set TIMEFRAME = "1Hour" and DAYS = 365
 # ==============================================================================
 TIMEFRAME = "1Hour"  # "1Hour" or "1Day"
-DAYS = 365          # Number of calendar days (365 = 1 year, 1095 = 3 years)
+DAYS = 730          # Number of calendar days (730 = 2 years)
+INITIAL_CAPITAL = 100000.0  # $100,000 portfolio fund
 # ==============================================================================
 
-def run_portfolio_simulation():
+def run_portfolio_simulation(days: int = 730, timeframe: str = "1Hour", capital: float = 100000.0):
+    global DAYS, TIMEFRAME
+    DAYS = days
+    TIMEFRAME = timeframe
+    initial_balance = capital
     print("Connecting to TWS...")
-    client = IBKRClient(client_id=12)
-    if client.demo_mode:
-        print("Error: TWS is not running. Cannot fetch real historical data.")
-        return
+    import random
+    client_id = random.randint(80, 99)
+    client = IBKRClient(client_id=client_id)
+    if not client._wrapper.is_connected:
+        print("Notice: TWS is not running — fetching historical data via Yahoo Finance fallback.")
+
 
     # Load symbol clusters
     cluster_file = Path(__file__).resolve().parent / 'data' / 'symbol_clusters.json'
@@ -84,7 +98,7 @@ def run_portfolio_simulation():
                 
                 try:
                     df = client.get_historical_data(sym, days=365, timeframe=TIMEFRAME, end_date=end_str)
-                    if df is not None and len(df) > 0 and df.attrs.get('data_source') == 'ibkr':
+                    if df is not None and len(df) > 0 and df.attrs.get('data_source') in ('ibkr', 'yfinance', 'cache', 'cache_stale'):
                         dfs.append(df)
                     else:
                         failed = True
@@ -99,6 +113,7 @@ def run_portfolio_simulation():
                 # Limit to total requested days (rough count of bars)
                 max_bars = DAYS * 7  # 7 bars per day for 1 hour timeframe
                 full_df = full_df.tail(max_bars)
+                full_df = full_df[~full_df.index.duplicated(keep='last')]
                 
                 # Indicators
                 delta = full_df['close'].diff()
@@ -107,7 +122,7 @@ def run_portfolio_simulation():
                 rs = gain / loss
                 full_df['rsi'] = 100 - (100 / (1 + rs))
                 full_df['sma_50'] = full_df['close'].rolling(window=50).mean()
-                full_df.index = pd.to_datetime(full_df.index)
+                full_df.index = pd.to_datetime(full_df.index, utc=True)
                 
                 datasets[sym] = full_df
                 print(f"  {sym}: {len(full_df)} 1H bars loaded (merged across {chunks} chunks)")
@@ -122,7 +137,7 @@ def run_portfolio_simulation():
                     rs = gain / loss
                     df['rsi'] = 100 - (100 / (1 + rs))
                     df['sma_50'] = df['close'].rolling(window=50).mean()
-                    df.index = pd.to_datetime(df.index)
+                    df.index = pd.to_datetime(df.index, utc=True)
                     datasets[sym] = df
                     print(f"  {sym}: {len(df)} bars loaded")
                 else:
@@ -138,7 +153,7 @@ def run_portfolio_simulation():
                 rs = gain / loss
                 df['rsi'] = 100 - (100 / (1 + rs))
                 df['sma_50'] = df['close'].rolling(window=50).mean()
-                df.index = pd.to_datetime(df.index)
+                df.index = pd.to_datetime(df.index, utc=True)
                 datasets[sym] = df
                 print(f"  {sym}: {len(df)} bars loaded")
             else:
@@ -163,22 +178,40 @@ def run_portfolio_simulation():
     closed_trades = []
     equity_curve = []
 
+    # Pre-index datasets by timestamp for instant O(1) simulation
+    print("Pre-indexing datasets for fast simulation...")
+    dataset_dicts = {}
+    for sym, df in datasets.items():
+        dataset_dicts[sym] = df[['close', 'rsi', 'sma_50']].to_dict('index')
+
+    def _to_val(item, default=np.nan):
+        if isinstance(item, dict):
+            return item
+        if isinstance(item, (pd.Series, np.ndarray, pd.DataFrame)):
+            item = item.values[-1] if len(item) > 0 else default
+        try:
+            if pd.isna(item):
+                return default
+            return float(item)
+        except Exception:
+            return default
+
     # Step through time hour-by-hour
     for current_time in all_timestamps:
         # 1. Update active positions (Exit Checks)
         active_positions = []
         for pos in positions:
             sym = pos['symbol']
-            df = datasets[sym]
+            sym_dict = dataset_dicts[sym]
             
             # Check if this timestamp exists for this stock
-            if current_time not in df.index:
+            if current_time not in sym_dict:
                 active_positions.append(pos)  # Keep active
                 continue
                 
-            current_bar = df.loc[current_time]
-            price = current_bar['close']
-            rsi = current_bar['rsi']
+            bar = sym_dict[current_time]
+            price = float(bar['close']) if 'close' in bar and pd.notna(bar['close']) else 0.0
+            rsi = float(bar['rsi']) if 'rsi' in bar and pd.notna(bar['rsi']) else 50.0
             
             # Exit check 1: Stop Loss
             if price <= pos['stop_loss']:
@@ -239,8 +272,8 @@ def run_portfolio_simulation():
         current_equity = balance
         for pos in positions:
             sym = pos['symbol']
-            if current_time in datasets[sym].index:
-                price = datasets[sym].loc[current_time]['close']
+            if current_time in dataset_dicts[sym]:
+                price = float(dataset_dicts[sym][current_time]['close'])
                 current_equity += (pos['qty'] * price)
             else:
                 current_equity += (pos['qty'] * pos['entry_price'])
@@ -257,10 +290,10 @@ def run_portfolio_simulation():
                 sec = symbol_to_sector[p['symbol']]
                 sector_counts[sec] = sector_counts.get(sec, 0) + 1
 
-            for sym in datasets.keys():
+            for sym in dataset_dicts.keys():
                 if sym in active_symbols:
                     continue
-                if current_time not in datasets[sym].index:
+                if current_time not in dataset_dicts[sym]:
                     continue
                 
                 # Check sector limit
@@ -268,10 +301,12 @@ def run_portfolio_simulation():
                 if sector_counts.get(sec, 0) >= max_per_sector:
                     continue
                 
-                current_bar = datasets[sym].loc[current_time]
-                price = current_bar['close']
-                rsi = current_bar['rsi']
-                sma50 = current_bar['sma_50']
+                bar = dataset_dicts[sym][current_time]
+                price = float(bar['close']) if 'close' in bar and pd.notna(bar['close']) else np.nan
+                rsi = float(bar['rsi']) if 'rsi' in bar and pd.notna(bar['rsi']) else np.nan
+                sma50 = float(bar['sma_50']) if 'sma_50' in bar and pd.notna(bar['sma_50']) else np.nan
+
+
                 
                 # Skip invalid rows
                 if pd.isna(rsi) or pd.isna(sma50):
@@ -406,4 +441,11 @@ def run_portfolio_simulation():
         print(f"⚠️ Could not generate plot: {e}")
 
 if __name__ == "__main__":
-    run_portfolio_simulation()
+    import argparse
+    parser = argparse.ArgumentParser(description="TradeSight $100K Portfolio Simulator")
+    parser.add_argument("--days", type=int, default=730, help="Days to backtest (default: 730 for 2 years)")
+    parser.add_argument("--timeframe", choices=["1Hour", "1Day"], default="1Hour", help="Timeframe (default: 1Hour)")
+    parser.add_argument("--capital", type=float, default=100000.0, help="Initial portfolio capital (default: 100000)")
+    args = parser.parse_args()
+    run_portfolio_simulation(days=args.days, timeframe=args.timeframe, capital=args.capital)
+

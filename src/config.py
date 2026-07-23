@@ -38,9 +38,9 @@ IBKR_PORT      = 7497
 IBKR_CLIENT_ID = 1   # paper trader default
 FORCE_YAHOO_QUOTES = True
 
-# Set to True to skip TWS connection entirely and run in demo/Yahoo-only mode.
-# Useful when TWS is not running — avoids the 10-second timeout on every startup.
-IBKR_DEMO_MODE = False
+# Require real market data from TWS or Yahoo Finance (Demo/synthetic mode disabled)
+REQUIRE_REAL_DATA = True
+ALLOW_YAHOO_FALLBACK = True
 
 # Trading Configuration
 USE_PAPER_TRADING = True  # Always start with paper trading for safety

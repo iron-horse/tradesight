@@ -235,6 +235,7 @@ class PaperTrader:
                 'KO', 'DIS',                        # Consumer staples + media
                 'NVDA', 'AVGO', 'MRVL', 'MU', 'ALAB', 'SOXX',  # Semiconductors
                 # 'SOXL', 'DRAM',                  # 3x/2x Leveraged ETFs (future)
+                'TSLA',                             # High-beta — isolated group, 1 position max
             ],
             'min_strategy_confidence': 0.55,  # Slightly higher bar for fewer, better trades
             'max_concurrent_trades': 5,       # 5 positions for more data (fractional shares)
@@ -244,6 +245,7 @@ class PaperTrader:
             'max_unrealized_gain_pct': 0.20,  # Auto-close at +20% unrealized gain
             'rebalance_frequency_days': 7,    # Rebalance weekly
             # Correlation groups — max 2 positions per group
+            # Exception: high_beta has only 1 symbol so its natural cap is 1
             'correlation_groups': {
                 'broad_market': ['SPY', 'QQQ'],
                 'tech': ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META'],
@@ -252,6 +254,7 @@ class PaperTrader:
                 'energy': ['XOM', 'CVX'],
                 'consumer': ['WMT', 'COST', 'HD', 'KO', 'DIS'],
                 'semiconductors': ['SOXX', 'NVDA', 'AVGO', 'MRVL', 'MU', 'ALAB'],
+                'high_beta': ['TSLA'],              # Isolated — wider stops, smaller size
                 # 'leveraged_etf': ['SOXL', 'DRAM'],  # future
             },
             'max_per_correlation_group': 2,
@@ -409,7 +412,7 @@ class PaperTrader:
             
             # Data source validation (Task 18): reject demo/synthetic data in paper trader
             data_source = getattr(data, 'attrs', {}).get('data_source', 'real')
-            if data_source in ('demo_mode', 'demo_fallback'):
+            if data_source in ('demo_mode', 'demo_fallback', 'synthetic'):
                 self.logger.warning(
                     f"[DataGuard] Rejecting {symbol}: data source is '{data_source}'. "
                     f"Reason: {getattr(data, 'attrs', {}).get('fallback_reason', 'N/A')}")
@@ -1816,8 +1819,8 @@ class PaperTrader:
 
     def _sync_with_broker(self):
         """Sync local state with IBKR TWS reality - call at start of every session."""
-        if self.alpaca.demo_mode:
-            self.logger.warning("IBKR client is running in DEMO mode — skipping broker sync to preserve local state")
+        if not getattr(self.alpaca, '_connected', False):
+            self.logger.warning("IBKR client is disconnected — skipping broker sync")
             return
         try:
             account = self.alpaca.get_account()
@@ -2015,8 +2018,8 @@ class PaperTrader:
 
     def _start_trade_updates_monitor(self):
         """Start background websocket supervisor with exponential backoff."""
-        if self.alpaca.demo_mode:
-            self.logger.info('[WS] Demo mode: skipping trade_updates monitor')
+        if not getattr(self.alpaca, '_connected', False):
+            self.logger.info('[WS] Disconnected mode: skipping trade_updates monitor')
             return
         if self._ws_thread and self._ws_thread.is_alive():
             return

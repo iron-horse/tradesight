@@ -42,6 +42,7 @@ except Exception:
 TOURNAMENT_SYMBOLS = [
     'SPY', 'QQQ', 'AAPL', 'MSFT', 'GOOGL',
     'JPM', 'BAC', 'JNJ', 'XOM', 'WMT',
+    'TSLA',   # high-beta — overnight optimizer builds OOS params for high_beta cluster
 ]
 
 class StrategyAutomation:
@@ -155,7 +156,7 @@ class StrategyAutomation:
         )
         return train, val, test
 
-    def create_tournament_datasets(self) -> List[Tuple[str, pd.DataFrame]]:
+    def create_tournament_datasets(self, symbols: List[str] = None) -> List[Tuple[str, pd.DataFrame]]:
         """
         Create three tournament rounds using REAL historical data with walk-forward splits.
 
@@ -165,14 +166,28 @@ class StrategyAutomation:
           Round 3 — test slice of symbol C  (final holdout, never seen before)
 
         Falls back to synthetic data only when Alpaca is unreachable.
+
+        Args:
+            symbols: Optional list of symbols to restrict the tournament to.
+                     If a single symbol is given, all 3 rounds use that symbol
+                     (train / val / test slices of its own data).
+                     If None, the full TOURNAMENT_SYMBOLS pool is used.
         """
         datasets: List[Tuple[str, pd.DataFrame]] = []
 
-        # Pick 3 different symbols so each round sees a different market regime
-        # Shuffle so we don't always use the same trio
-        pool = TOURNAMENT_SYMBOLS.copy()
+        # Use caller-supplied pool or fall back to the full pool
+        pool = (symbols if symbols else TOURNAMENT_SYMBOLS).copy()
         random.shuffle(pool)
-        round_symbols = pool[:3]
+
+        if len(pool) == 1:
+            # Single-symbol mode: use train / val / test slices of the same symbol
+            round_symbols = [pool[0], pool[0], pool[0]]
+            self.logger.info(
+                f"Single-symbol tournament mode: all 3 rounds will use {pool[0]} "
+                f"(train / val / test walk-forward slices)"
+            )
+        else:
+            round_symbols = pool[:3]
 
         # Total days to fetch: enough for a full walk-forward split
         # We need at least `data_days_per_round[-1]` bars in the TEST slice alone,
@@ -182,13 +197,18 @@ class StrategyAutomation:
 
         split_labels = ['train', 'val', 'test']
 
+        # Cache fetched data per symbol to avoid redundant TWS calls in single-symbol mode
+        _fetched: dict = {}
+
         for i, (symbol, days, split_label) in enumerate(
             zip(round_symbols,
                 self.tournament_config['data_days_per_round'],
                 split_labels),
             start=1
         ):
-            real_data = self._fetch_real_data(symbol, days=fetch_days)
+            if symbol not in _fetched:
+                _fetched[symbol] = self._fetch_real_data(symbol, days=fetch_days)
+            real_data = _fetched[symbol]
 
             if real_data is not None and len(real_data) >= 150:
                 train_df, val_df, test_df = self._walk_forward_split(real_data)
@@ -209,21 +229,28 @@ class StrategyAutomation:
                     f"(real historical data, NO synthetic, NO lookahead)"
                 )
             else:
-                # Fallback: synthetic data (logs a clear warning)
-                self.logger.warning(
-                    f"Round {i}: Alpaca unavailable for {symbol}. "
-                    f"Falling back to synthetic data — tournament results will be unreliable."
+                self.logger.error(
+                    f"Round {i}: Market data unavailable for {symbol} from TWS or Yahoo Finance."
                 )
-                data_slice = create_test_data(days=days)
-                label = f'Round_{i}_SYNTHETIC_{days}d_UNRELIABLE'
+                raise RuntimeError(f"Cannot run tournament round {i}: Real market data unavailable for {symbol}")
 
             datasets.append((label, data_slice))
 
         return datasets
     
-    def run_tournament_session(self, session_id: str) -> Dict:
-        """Run a complete tournament session"""
+    def run_tournament_session(self, session_id: str, symbols: List[str] = None) -> Dict:
+        """Run a complete tournament session.
+
+        Args:
+            session_id: Unique identifier for this session (used in DB + report).
+            symbols:    Optional symbol list to restrict the data pool.  If a
+                        single symbol is given, all 3 rounds use train/val/test
+                        slices of that symbol only.  Defaults to the full
+                        TOURNAMENT_SYMBOLS pool.
+        """
         self.logger.info(f"Starting tournament session: {session_id}")
+        if symbols:
+            self.logger.info(f"Focused symbol pool: {symbols}")
         
         try:
             # Create tournament
@@ -264,7 +291,7 @@ class StrategyAutomation:
                 self.logger.warning(f"Could not register champion RSI variant: {_ce}")
             
             # Create datasets for multi-round tournament
-            datasets = self.create_tournament_datasets()
+            datasets = self.create_tournament_datasets(symbols=symbols)
 
             # Flag whether any round fell back to synthetic data
             used_synthetic = any('SYNTHETIC' in name for name, _ in datasets)
@@ -501,14 +528,22 @@ class StrategyAutomation:
         except Exception as e:
             self.logger.error(f"Failed to save report: {e}")
     
-    def run_overnight_session(self):
-        """Main entry point for overnight automation"""
+    def run_overnight_session(self, symbols: List[str] = None):
+        """Main entry point for overnight automation.
+
+        Args:
+            symbols: Optional list of symbols to focus the tournament on.
+                     Passes through to run_tournament_session / create_tournament_datasets.
+                     When None, the full TOURNAMENT_SYMBOLS pool is used.
+        """
         session_id = f"overnight_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        if symbols:
+            session_id += f"_{'_'.join(s.upper() for s in symbols)}"
         
         self.logger.info("=== Starting Overnight Strategy Development Session ===")
         
         # Run tournament
-        results = self.run_tournament_session(session_id)
+        results = self.run_tournament_session(session_id, symbols=symbols)
         
         # Store results
         self.store_session_results(results)
@@ -533,14 +568,29 @@ class StrategyAutomation:
 
 
 def main():
-    """CLI entry point"""
-    if len(sys.argv) > 1 and sys.argv[1] == 'report':
+    """CLI entry point
+
+    Usage:
+        python strategy_automation.py              # full overnight run (all TOURNAMENT_SYMBOLS)
+        python strategy_automation.py report       # print daily report only
+        python strategy_automation.py tsla         # focused run: TSLA train/val/test only
+        python strategy_automation.py AAPL MSFT    # focused run: 2-symbol pool
+    """
+    args = [a.upper() for a in sys.argv[1:]]
+
+    if args == ['REPORT']:
         # Generate report only
         automation = StrategyAutomation()
         report = automation.generate_daily_report()
         print(report)
+    elif args:
+        # Focused symbol run — treat all non-'REPORT' args as symbol names
+        focused_symbols = args
+        print(f"🎯 Focused tournament: {focused_symbols}")
+        automation = StrategyAutomation()
+        automation.run_overnight_session(symbols=focused_symbols)
     else:
-        # Run full overnight session
+        # Run full overnight session with default pool
         automation = StrategyAutomation()
         automation.run_overnight_session()
 

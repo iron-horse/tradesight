@@ -37,7 +37,7 @@ def mock_trader(temp_dir):
     """PaperTrader in demo mode with a fresh temp DB"""
     with patch('data.ibkr_client.IBKRClient') as MockAlpaca:
         mock_alpaca = MagicMock()
-        mock_alpaca.demo_mode = True
+        mock_alpaca._connected = True
         mock_alpaca.get_account.return_value = {
             "equity": "500.00", "buying_power": "49.19",
             "long_market_value": "450.00", "status": "ACTIVE"

@@ -120,35 +120,31 @@ class TestStrategyAutomation:
 
     @patch('automation.strategy_automation.AlpacaClient')  # noqa: patched via alias IBKRClient
     def test_create_tournament_datasets_synthetic_fallback(self, mock_alpaca_cls):
-        """Dataset creation falls back to synthetic when Alpaca is unavailable"""
+        """Dataset creation raises RuntimeError when real market data is unavailable"""
         mock_client = MagicMock()
         mock_client.get_historical_data.side_effect = Exception("Network error")
         mock_alpaca_cls.return_value = mock_client
 
-        datasets = self.automation.create_tournament_datasets()
-
-        assert len(datasets) == len(self.automation.tournament_config['data_days_per_round'])
-        for name, data in datasets:
-            assert 'Round_' in name
-            assert len(data) > 0
-            # Should be labelled synthetic in fallback mode
-            assert 'SYNTHETIC' in name
+        with pytest.raises(RuntimeError):
+            self.automation.create_tournament_datasets()
 
     @patch('automation.strategy_automation.AlpacaClient')  # noqa: patched via alias IBKRClient
     def test_create_tournament_datasets(self, mock_alpaca_cls):
         """Backwards-compat: datasets list has correct length and valid DataFrames"""
         mock_client = MagicMock()
-        mock_client.get_historical_data.side_effect = Exception("offline")
+        import pandas as pd
+        dummy_df = pd.DataFrame({'open': [100.0]*200, 'high': [105.0]*200, 'low': [95.0]*200, 'close': [102.0]*200, 'volume': [1000]*200})
+        dummy_df.attrs['data_source'] = 'yfinance'
+        mock_client.get_historical_data.return_value = dummy_df
         mock_alpaca_cls.return_value = mock_client
 
         datasets = self.automation.create_tournament_datasets()
-
         assert len(datasets) == len(self.automation.tournament_config['data_days_per_round'])
         for name, data in datasets:
             assert isinstance(name, str)
             assert 'Round_' in name
             assert hasattr(data, 'iloc')
-            assert len(data) > 0
+            assert len(data) >= 10
 
     # ------------------------------------------------------------------
     # Storage + report tests (unchanged from original)
@@ -312,7 +308,10 @@ class TestStrategyAutomation:
 
         # Mock Alpaca to avoid network calls
         mock_client = MagicMock()
-        mock_client.get_historical_data.side_effect = Exception("offline")
+        import pandas as pd
+        dummy_df = pd.DataFrame({'open': [100.0]*200, 'high': [105.0]*200, 'low': [95.0]*200, 'close': [102.0]*200, 'volume': [1000]*200})
+        dummy_df.attrs['data_source'] = 'yfinance'
+        mock_client.get_historical_data.return_value = dummy_df
         mock_alpaca_cls.return_value = mock_client
 
         results = self.automation.run_tournament_session('test_session')

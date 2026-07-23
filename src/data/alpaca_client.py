@@ -86,7 +86,6 @@ class AlpacaClient:
         self.api_key = api_key
         self.secret_key = secret_key
         self.paper = paper
-        self.demo_mode = api_key is None
         
         # API endpoints
         if self.paper:
@@ -97,7 +96,7 @@ class AlpacaClient:
             self.data_url = "https://data.alpaca.markets"
         
         self.headers = {}
-        if not self.demo_mode:
+        if self.api_key and self.secret_key:
             self.headers = {
                 "APCA-API-KEY-ID": self.api_key,
                 "APCA-API-SECRET-KEY": self.secret_key,
@@ -105,10 +104,8 @@ class AlpacaClient:
             }
         
         self.indicators = TechnicalIndicators()
-        self._demo_fallback_count = 0
         
-        # Pre-warm DNS for Alpaca endpoints to catch resolution issues early
-        if not self.demo_mode:
+        if self.headers:
             import socket
             for host in ['data.alpaca.markets', 'paper-api.alpaca.markets']:
                 try:
@@ -125,19 +122,32 @@ class AlpacaClient:
                           timeframe: str = '1Day') -> pd.DataFrame:
         """
         Get historical OHLCV data for a symbol.
-        
-        Args:
-            symbol: Stock symbol (e.g., 'AAPL')
-            days: Number of days of history
-            timeframe: '1Min', '5Min', '15Min', '30Min', '1Hour', '1Day'
-            
-        Returns:
-            DataFrame with OHLCV data
         """
-        if self.demo_mode:
-            df = self._generate_demo_data(symbol, days)
-            df.attrs['data_source'] = 'demo_mode'
-            return df
+        if not self.headers:
+            # Fall back to Yahoo Finance
+            import yfinance as yf
+            import warnings
+            interval_map = {"1Day": "1d", "1Hour": "1h", "30Min": "30m", "15Min": "15m", "5Min": "5m", "1Min": "1m"}
+            interval = interval_map.get(timeframe, "1d")
+            period = '2y' if days >= 365 else ('1y' if days >= 30 else '30d')
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=True)
+            if df is not None and len(df) >= 10:
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = [c[0].lower() for c in df.columns]
+                else:
+                    df.columns = [c.lower() for c in df.columns]
+                req_cols = [c for c in ['open', 'high', 'low', 'close', 'volume'] if c in df.columns]
+                if len(req_cols) == 5:
+                    df = df[['open', 'high', 'low', 'close', 'volume']].dropna()
+                    df.index = pd.to_datetime(df.index)
+                    cutoff = df.index[-1] - pd.Timedelta(days=days)
+                    df = df[df.index >= cutoff]
+                    if len(df) >= 5:
+                        df.attrs["data_source"] = "yfinance"
+                        return df
+            raise RuntimeError(f"Alpaca API keys not set and Yahoo Finance fetch failed for {symbol}")
         
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
@@ -210,117 +220,117 @@ class AlpacaClient:
                 return df.tail(max_rows)
                 
             else:
-                self._demo_fallback_count += 1
-                import logging
-                logging.getLogger('AlpacaClient').warning(
-                    f"API Error {response.status_code} for {symbol} - falling back to DEMO data (fallback #{self._demo_fallback_count})"
-                )
-                df = self._generate_demo_data(symbol, days)
-                df.attrs['data_source'] = 'demo_fallback'
-                df.attrs['fallback_reason'] = f'API {response.status_code}'
-                return df
+                raise RuntimeError(f"Alpaca API Error {response.status_code} for {symbol}")
                 
         except Exception as e:
-            self._demo_fallback_count += 1
-            import logging
-            logging.getLogger('AlpacaClient').warning(
-                f"Error fetching {symbol}: {e} - falling back to DEMO data (fallback #{self._demo_fallback_count})"
-            )
-            df = self._generate_demo_data(symbol, days)
-            df.attrs['data_source'] = 'demo_fallback'
-            df.attrs['fallback_reason'] = str(e)
-            return df
-        except NameError:
-            # response wasn't assigned (all retries failed)
-            self._demo_fallback_count += 1
-            import logging
-            logging.getLogger('AlpacaClient').warning(
-                f"All retries failed for {symbol}: {last_error} - falling back to DEMO data"
-            )
-            df = self._generate_demo_data(symbol, days)
-            df.attrs['data_source'] = 'demo_fallback'
-            df.attrs['fallback_reason'] = str(last_error)
-            return df
+            # Attempt Yahoo Finance fallback before raising error
+            try:
+                import yfinance as yf
+                import warnings
+                interval_map = {"1Day": "1d", "1Hour": "1h", "30Min": "30m", "15Min": "15m", "5Min": "5m", "1Min": "1m"}
+                interval = interval_map.get(timeframe, "1d")
+                period = '2y' if days >= 365 else ('1y' if days >= 30 else '30d')
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=True)
+                if df is not None and len(df) >= 10:
+                    if isinstance(df.columns, pd.MultiIndex):
+                        df.columns = [c[0].lower() for c in df.columns]
+                    else:
+                        df.columns = [c.lower() for c in df.columns]
+                    req_cols = [c for c in ['open', 'high', 'low', 'close', 'volume'] if c in df.columns]
+                    if len(req_cols) == 5:
+                        df = df[['open', 'high', 'low', 'close', 'volume']].dropna()
+                        df.index = pd.to_datetime(df.index)
+                        cutoff = df.index[-1] - pd.Timedelta(days=days)
+                        df = df[df.index >= cutoff]
+                        if len(df) >= 5:
+                            df.attrs["data_source"] = "yfinance"
+                            return df
+            except Exception:
+                pass
+            raise RuntimeError(f"Error fetching historical data for {symbol}: {e}")
     
     def get_quote(self, symbol: str) -> Optional[StockQuote]:
         """Get real-time quote for a symbol"""
-        if self.demo_mode:
-            return self._generate_demo_quote(symbol)
+        if not self.headers:
+            return self._get_yahoo_quote_fallback(symbol)
         
         url = f"{self.data_url}/v2/stocks/{symbol}/quotes/latest"
-        
         try:
             response = requests.get(url, headers=self.headers, timeout=5)
-            
             if response.status_code == 200:
                 data = response.json()
                 quote_data = data.get('quote', {})
-                
                 return StockQuote(
                     symbol=symbol,
                     timestamp=pd.to_datetime(quote_data.get('t')),
                     bid=float(quote_data.get('bp', 0)),
                     ask=float(quote_data.get('ap', 0)),
-                    last=float(quote_data.get('ap', 0)),  # Use ask as last for demo
+                    last=float(quote_data.get('ap', 0)),
                     volume=int(quote_data.get('as', 0)),
-                    change=0.0,  # Would calculate from previous close
+                    change=0.0,
                     change_pct=0.0
                 )
             else:
-                return self._generate_demo_quote(symbol)
-                
-        except Exception as e:
-            print(f"Error getting quote for {symbol}: {e}")
-            return self._generate_demo_quote(symbol)
+                return self._get_yahoo_quote_fallback(symbol)
+        except Exception:
+            return self._get_yahoo_quote_fallback(symbol)
+
+    def _get_yahoo_quote_fallback(self, symbol: str) -> Optional[StockQuote]:
+        import urllib.request
+        import json
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                data = json.loads(response.read().decode())
+                if not data.get('chart', {}).get('result'):
+                    return None
+                meta = data['chart']['result'][0]['meta']
+                last_price = meta.get('regularMarketPrice')
+                if not last_price or last_price <= 0:
+                    return None
+                prev_close = meta.get('chartPreviousClose', last_price)
+                change = last_price - prev_close
+                change_pct = (change / prev_close * 100) if prev_close else 0.0
+                volume = meta.get('regularMarketVolume', 0)
+                return StockQuote(
+                    symbol=symbol,
+                    timestamp=datetime.now(),
+                    bid=last_price,
+                    ask=last_price,
+                    last=last_price,
+                    volume=int(volume or 0),
+                    change=round(change, 4),
+                    change_pct=round(change_pct, 4)
+                )
+        except Exception:
+            return None
     
     def scan_sp500(self, min_volume: int = 1000000) -> List[Dict]:
-        """
-        Scan S&P 500 stocks for opportunities using technical indicators.
-        
-        Args:
-            min_volume: Minimum average volume filter
-            
-        Returns:
-            List of opportunity dictionaries with scores
-        """
         opportunities = []
-        
         print(f"📊 Scanning S&P 500 stocks...")
-        
         for i, symbol in enumerate(self.SP500_SYMBOLS):
             try:
                 print(f"  Analyzing {symbol} ({i+1}/{len(self.SP500_SYMBOLS)})...")
-                
-                # Get historical data
                 data = self.get_historical_data(symbol, days=100)
-                
                 if len(data) < 50:
                     continue
-                
-                # Check volume filter
                 avg_volume = data['volume'].tail(20).mean()
                 if avg_volume < min_volume:
                     continue
-                
-                # Calculate indicators
                 indicators = self.indicators.calculate_all(data)
-                
-                # Simple scoring based on confluence
                 confluence = indicators.get('confluence_score', 0)
                 rsi = indicators['indicators'].get('rsi', 50)
                 macd = indicators['indicators'].get('macd', 0)
-                
-                # Score calculation (simplified)
                 score = confluence * 100
-                
-                if rsi < 30:  # Oversold
+                if rsi < 30:
                     score += 20
-                elif rsi > 70:  # Overbought (short opportunity)
+                elif rsi > 70:
                     score += 15
-                
-                if abs(macd) > 1:  # Strong MACD signal
+                if abs(macd) > 1:
                     score += 10
-                
                 opportunities.append({
                     'symbol': symbol,
                     'score': min(100, score),
@@ -330,14 +340,10 @@ class AlpacaClient:
                     'confluence': float(confluence),
                     'signals': self._extract_signals(indicators)
                 })
-                
             except Exception as e:
                 print(f"  Error analyzing {symbol}: {e}")
                 continue
-        
-        # Sort by score descending
         opportunities.sort(key=lambda x: x['score'], reverse=True)
-        
         print(f"✅ Found {len(opportunities)} opportunities")
         return opportunities
     
@@ -346,159 +352,81 @@ class AlpacaClient:
                           quantity: int, 
                           side: str,
                           order_type: str = 'market') -> Dict:
-        """
-        Place a paper trade (simulated).
+        if not self.headers:
+            return {'error': 'Alpaca API keys not configured.'}
         
-        Args:
-            symbol: Stock symbol
-            quantity: Number of shares
-            side: 'buy' or 'sell'
-            order_type: 'market' or 'limit'
-            
-        Returns:
-            Order confirmation dictionary
-        """
-        if self.demo_mode:
-            # Simulate paper trade
-            quote = self.get_quote(symbol)
-            fill_price = quote.last if quote else 100.0
-            
-            order_id = f"demo_{int(time.time())}"
-            
-            return {
-                'order_id': order_id,
-                'symbol': symbol,
-                'quantity': quantity,
-                'side': side,
-                'status': 'filled',
-                'fill_price': fill_price,
-                'fill_time': datetime.now().isoformat(),
-                'demo_mode': True
-            }
-        
-        # Real Alpaca paper trading API
         url = f"{self.base_url}/v2/orders"
-        
-        # Use 'qty' as string for fractional share support on Alpaca
         order_data = {
             'symbol': symbol,
-            'qty': str(round(float(quantity), 6)),  # fractional OK as string
+            'qty': str(round(float(quantity), 6)),
             'side': side,
             'type': order_type,
             'time_in_force': 'day'
         }
-        
         try:
             response = requests.post(url, headers=self.headers, json=order_data, timeout=10)
-            
             if response.status_code in (200, 201):
                 order = response.json()
-                # Normalize status: Alpaca returns 'new'/'accepted_for_bidding'/etc.
                 if 'status' not in order or order['status'] not in ('filled',):
-                    order['status'] = 'accepted'  # treat as accepted
-                # fill_price: use limit_price or estimate from filled_avg_price
+                    order['status'] = 'accepted'
                 order['fill_price'] = float(order.get('filled_avg_price') or order.get('limit_price') or 0) or None
                 return order
             else:
-                import logging
-                logging.getLogger("AlpacaClient").error(f"Order failed: {response.status_code} - {response.text}")
                 return {'error': response.text, 'status_code': response.status_code}
-                
         except Exception as e:
-            import logging
-            logging.getLogger("AlpacaClient").error(f"Error placing order: {e}")
             return {'error': str(e)}
-    
 
     def close_full_position(self, symbol: str) -> dict:
-        """
-        Close the entire Alpaca position for a symbol using DELETE /v2/positions/{symbol}.
-        This is more reliable than a sell order for fractional shares.
-        Returns dict with status='closed' on success, or {'error': ...} on failure.
-        """
-        import logging
-        logger = logging.getLogger("AlpacaClient")
-
-        if self.demo_mode:
-            quote = self.get_quote(symbol)
-            fill_price = quote.last if quote else 100.0
-            return {'status': 'closed', 'fill_price': fill_price, 'symbol': symbol, 'demo_mode': True}
-
+        if not self.headers:
+            return {'error': 'Alpaca API keys not configured.'}
         url = f"{self.base_url}/v2/positions/{symbol}"
         try:
             response = requests.delete(url, headers=self.headers, timeout=10)
             if response.status_code in (200, 204):
                 data = response.json() if response.text else {}
                 fill_price = float(data.get('filled_avg_price') or data.get('avg_fill_price') or 0) or None
-                logger.info(f"Closed full Alpaca position: {symbol} @ fill_price={fill_price}")
                 return {'status': 'closed', 'fill_price': fill_price, 'symbol': symbol}
             else:
-                logger.error(f"close_full_position failed: {response.status_code} - {response.text}")
                 return {'error': response.text, 'status_code': response.status_code}
         except Exception as e:
-            logger.error(f"close_full_position exception: {e}")
             return {'error': str(e)}
 
     def get_account(self) -> dict:
-        """Get Alpaca account info (cash, buying power, equity, positions value)."""
-        if self.demo_mode:
-            return {"cash": "500.00", "buying_power": "500.00", "equity": "500.00",
-                    "portfolio_value": "500.00", "long_market_value": "0", "status": "ACTIVE"}
-        
+        if not self.headers:
+            return {"cash": "0.00", "buying_power": "0.00", "equity": "0.00",
+                    "portfolio_value": "0.00", "long_market_value": "0", "status": "UNCONFIGURED"}
         url = f"{self.base_url}/v2/account"
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
             if response.status_code == 200:
                 return response.json()
             else:
-                print(f"Account query failed: {response.status_code} - {response.text}")
                 return {}
         except Exception as e:
-            print(f"Error getting account: {e}")
             return {}
 
     def get_remote_positions(self) -> list:
-        """Get open positions from Alpaca API (not local DB)."""
-        if self.demo_mode:
+        if not self.headers:
             return []
-        
         url = f"{self.base_url}/v2/positions"
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
             if response.status_code == 200:
                 return response.json()
             else:
-                print(f"Positions query failed: {response.status_code} - {response.text}")
                 return []
         except Exception as e:
-            print(f"Error getting positions: {e}")
             return []
 
     def get_paper_positions(self) -> List[PaperPosition]:
-        """Get current paper trading positions"""
-        if self.demo_mode:
-            # Return demo positions
-            return [
-                PaperPosition(
-                    symbol='AAPL',
-                    quantity=10,
-                    side='long',
-                    avg_entry_price=150.0,
-                    current_price=155.0,
-                    unrealized_pnl=50.0,
-                    market_value=1550.0
-                )
-            ]
-        
+        if not self.headers:
+            return []
         url = f"{self.base_url}/v2/positions"
-        
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
-            
             if response.status_code == 200:
                 positions_data = response.json()
                 positions = []
-                
                 for pos in positions_data:
                     positions.append(PaperPosition(
                         symbol=pos['symbol'],
@@ -509,91 +437,20 @@ class AlpacaClient:
                         unrealized_pnl=float(pos['unrealized_pnl']),
                         market_value=float(pos['market_value'])
                     ))
-                
                 return positions
-                
-        except Exception as e:
-            print(f"Error getting positions: {e}")
+        except Exception:
             return []
-    
-    def _generate_demo_data(self, symbol: str, days: int) -> pd.DataFrame:
-        """Generate realistic demo OHLCV data"""
-        import zlib
-        symbol_seed = zlib.adler32(symbol.encode('utf-8'))
-        np.random.seed((symbol_seed + int(datetime.now().strftime("%Y%m%d"))) % 2147483647)  # Varies daily per symbol
-        
-        dates = pd.date_range(end=datetime.now(), periods=days, freq='D')
-        
-        # Base price varies by symbol
-        base_prices = {
-            'AAPL':222,'MSFT':380,'AMZN':210,'GOOGL':175,'GOOG':175,
-            'TSLA':260,'AMD':105,'META':520,'PYPL':68,'NVDA':900,
-            'QCOM':165,'INTC':25,'IBM':230,'ORCL':130,'CSCO':52,
-            'MU':98,'TXN':185,'ADBE':450,'HON':210,'GE':175,
-            'JPM':230,'BAC':46,'V':300,'MA':510,'KO':72,
-            'PEP':165,'WMT':90,'COST':935,'HD':385,'NKE':75,
-            'DIS':112,'XOM':115,'CVX':155,'BA':170,'PFE':28,
-            'BMY':58,'JNJ':158,'MRK':125,'ABT':124,'VZ':42,'T':22
-        }
-        base_price = base_prices.get(symbol, 100)
-        
-        # Generate price series with some trend + noise
-        returns = np.random.normal(0.001, 0.02, days)
-        prices = [base_price]
-        for ret in returns[1:]:
-            prices.append(prices[-1] * (1 + ret))
-        
-        # Create OHLCV
-        data = []
-        for i, (date, close) in enumerate(zip(dates, prices)):
-            open_price = close + np.random.normal(0, close * 0.005)
-            high = max(open_price, close) + np.random.uniform(0, close * 0.01)
-            low = min(open_price, close) - np.random.uniform(0, close * 0.01)
-            volume = int(np.random.uniform(1000000, 10000000))
-            
-            data.append({
-                'open': round(open_price, 2),
-                'high': round(high, 2),
-                'low': round(low, 2),
-                'close': round(close, 2),
-                'volume': volume
-            })
-        
-        df = pd.DataFrame(data, index=dates)
-        return df
-    
-    def _generate_demo_quote(self, symbol: str) -> StockQuote:
-        """Generate realistic demo quote"""
-        # Get last price from demo data
-        data = self._generate_demo_data(symbol, 1)
-        last_price = float(data['close'].iloc[-1])
-        
-        return StockQuote(
-            symbol=symbol,
-            timestamp=datetime.now(),
-            bid=round(last_price - 0.01, 2),
-            ask=round(last_price + 0.01, 2),
-            last=last_price,
-            volume=int(np.random.uniform(100000, 1000000)),
-            change=round(np.random.uniform(-5, 5), 2),
-            change_pct=round(np.random.uniform(-3, 3), 2)
-        )
-    
+        return []
+
     def _extract_signals(self, indicators: Dict) -> List[str]:
-        """Extract trading signals from indicator data"""
         signals = []
-        
-        # Extract signals from indicators
         ind_data = indicators.get('indicators', {})
-        
         rsi = ind_data.get('rsi', 50)
         if rsi < 30:
             signals.append('RSI_OVERSOLD')
         elif rsi > 70:
             signals.append('RSI_OVERBOUGHT')
-        
         confluence = indicators.get('confluence_score', 0)
         if confluence > 0.7:
             signals.append('HIGH_CONFLUENCE')
-        
         return signals
